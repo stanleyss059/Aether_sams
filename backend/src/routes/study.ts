@@ -30,7 +30,8 @@ const upload = multer({
       "text/plain",
       "text/markdown",
     ].includes(file.mimetype) || /\.(pdf|docx|txt|md)$/i.test(file.originalname);
-    cb(ok ? null : Errors.validation("Upload a PDF, Word (.docx), or text file."), ok);
+    if (ok) cb(null, true);
+    else cb(Errors.validation("Upload a PDF, Word (.docx), or text file."));
   },
 });
 
