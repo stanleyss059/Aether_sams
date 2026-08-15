@@ -1,11 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import { Router } from "express";
 import multer from "multer";
-import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { config } from "../config.js";
 import { Errors } from "../lib/errors.js";
 import { extractText } from "../lib/extract.js";
 import { generateQuizFromText } from "../lib/ai.js";
@@ -14,20 +10,8 @@ import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
 export const studyRouter = Router();
 studyRouter.use(requireAuth);
 
-const dest = path.resolve(config.uploadDir);
-
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      try {
-        fs.mkdirSync(dest, { recursive: true });
-        cb(null, dest);
-      } catch (error) {
-        cb(error instanceof Error ? error : new Error("Could not prepare the upload folder."), dest);
-      }
-    },
-    filename: (_req, file, cb) => cb(null, `${randomUUID()}${path.extname(file.originalname)}`),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 12 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = [
@@ -218,9 +202,9 @@ studyRouter.post(
     if (spaceId) await ownedSpace(req.session.user!.id, spaceId);
     let text = "";
     try {
-      text = await extractText(req.file.path, req.file.mimetype, req.file.originalname);
+      if (!req.file.buffer) throw new Error("Could not read that file.");
+      text = await extractText(req.file.buffer, req.file.mimetype, req.file.originalname);
     } catch (error) {
-      fs.unlink(req.file.path, () => undefined);
       throw Errors.validation(error instanceof Error ? error.message : "Could not read that file.");
     }
     if (text.length < 80) {

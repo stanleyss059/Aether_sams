@@ -50,7 +50,8 @@ authRouter.post(
   "/logout",
   asyncHandler(async (req, res) => {
     req.session.destroy(() => undefined);
-    res.clearCookie("sf.sid");
+    res.clearCookie("sf.user", { path: "/" });
+    res.clearCookie("sf.sid", { path: "/" });
     res.json({ success: true, data: { ok: true } });
   }),
 );

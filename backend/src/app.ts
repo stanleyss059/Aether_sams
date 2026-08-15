@@ -2,9 +2,9 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import session from "express-session";
 import { config } from "./config.js";
-import { PrismaSessionStore } from "./lib/sessionStore.js";
+import { ensureDb } from "./lib/ensureDb.js";
+import { userSession } from "./lib/userSession.js";
 import { authRouter } from "./routes/auth.js";
 import { studyRouter } from "./routes/study.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -16,16 +16,8 @@ export function createApp() {
   app.use(cors({ origin: config.frontendUrl, credentials: true }));
   app.use(express.json({ limit: "2mb" }));
   app.use(cookieParser());
-  app.use(
-    session({
-      name: "sf.sid",
-      secret: config.sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      store: new PrismaSessionStore(),
-      cookie: { httpOnly: true, sameSite: "lax", secure: config.isProd, maxAge: 8 * 60 * 60 * 1000 },
-    }),
-  );
+  app.use(userSession(config.sessionSecret, config.isProd));
+  app.use(ensureDb);
   app.get("/api/health", (_req, res) => res.json({ success: true, data: { ok: true } }));
   app.use("/api/auth", authRouter);
   app.use("/api", studyRouter);

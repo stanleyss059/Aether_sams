@@ -1,4 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 
-/** Shared Prisma client for StudyForge (includes Space). */
+if (process.env.VERCEL) {
+  const url = process.env.DATABASE_URL ?? "";
+  if (!url || url.startsWith("file:")) {
+    process.env.DATABASE_URL = "file:/tmp/studyforge.db";
+  }
+}
+
 export const prisma = new PrismaClient();

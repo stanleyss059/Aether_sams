@@ -13,7 +13,7 @@ function required(name: string, fallback?: string): string {
 export const config = {
   isProd: process.env.NODE_ENV === "production",
   port: Number(process.env.PORT ?? 4001),
-  sessionSecret: required("SESSION_SECRET"),
+  sessionSecret: required("SESSION_SECRET", process.env.VERCEL ? "studyforge-vercel-session-secret-32ch" : undefined),
   frontendUrl:
     process.env.FRONTEND_URL ??
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
