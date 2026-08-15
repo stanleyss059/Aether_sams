@@ -24,5 +24,5 @@ export const config = {
   openaiKey: process.env.OPENAI_API_KEY ?? "",
   openaiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-  uploadDir: process.env.UPLOAD_DIR ?? "uploads",
+  uploadDir: process.env.VERCEL ? path.join("/tmp", "studyforge-uploads") : (process.env.UPLOAD_DIR ?? "uploads"),
 };

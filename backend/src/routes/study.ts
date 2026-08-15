@@ -15,11 +15,17 @@ export const studyRouter = Router();
 studyRouter.use(requireAuth);
 
 const dest = path.resolve(config.uploadDir);
-fs.mkdirSync(dest, { recursive: true });
 
 const upload = multer({
   storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, dest),
+    destination: (_req, _file, cb) => {
+      try {
+        fs.mkdirSync(dest, { recursive: true });
+        cb(null, dest);
+      } catch (error) {
+        cb(error instanceof Error ? error : Errors.validation("Could not prepare the upload folder."));
+      }
+    },
     filename: (_req, file, cb) => cb(null, `${randomUUID()}${path.extname(file.originalname)}`),
   }),
   limits: { fileSize: 12 * 1024 * 1024 },
