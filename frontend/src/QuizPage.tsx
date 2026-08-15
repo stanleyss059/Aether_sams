@@ -4,6 +4,32 @@ import { api, ApiError } from "./api";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 
+type Draft = { answers: Record<string, number>; index: number };
+
+function draftKey(quizId: string) {
+  return `studyforge.quiz-draft.${quizId}`;
+}
+
+function readDraft(quizId: string): Draft | null {
+  try {
+    const raw = localStorage.getItem(draftKey(quizId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Draft;
+    if (!parsed || typeof parsed.answers !== "object" || parsed.answers == null) return null;
+    return { answers: parsed.answers, index: Number(parsed.index) || 0 };
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(quizId: string, draft: Draft) {
+  localStorage.setItem(draftKey(quizId), JSON.stringify(draft));
+}
+
+function clearDraft(quizId: string) {
+  localStorage.removeItem(draftKey(quizId));
+}
+
 type Quiz = {
   title: string;
   documentId: string;
@@ -43,13 +69,28 @@ export function QuizPage() {
     if (!id) return;
     api<Quiz>(`/api/quizzes/${id}`)
       .then((data) => {
+        const draft = readDraft(id);
+        const ids = new Set(data.questions.map((q) => q.id));
+        const restored: Record<string, number> = {};
+        if (draft) {
+          for (const [questionId, choice] of Object.entries(draft.answers)) {
+            if (ids.has(questionId) && Number.isInteger(choice) && choice >= 0 && choice <= 3) {
+              restored[questionId] = choice;
+            }
+          }
+        }
         setQuiz(data);
-        setAnswers({});
-        setIndex(0);
+        setAnswers(restored);
+        setIndex(Math.min(Math.max(0, draft?.index ?? 0), Math.max(0, data.questions.length - 1)));
         setResult(null);
       })
       .catch((err: Error) => setError(err.message));
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !quiz || result) return;
+    writeDraft(id, { answers, index });
+  }, [id, quiz, answers, index, result]);
 
   const question = quiz?.questions[index];
   const answeredCount = quiz ? quiz.questions.filter((q) => answers[q.id] !== undefined).length : 0;
@@ -95,6 +136,7 @@ export function QuizPage() {
       });
       setResult(data);
       setConfirmSubmit(false);
+      if (id) clearDraft(id);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not submit.");
@@ -112,6 +154,7 @@ export function QuizPage() {
         quiz={quiz}
         result={result}
         onRetake={() => {
+          if (id) clearDraft(id);
           setResult(null);
           setAnswers({});
           setIndex(0);

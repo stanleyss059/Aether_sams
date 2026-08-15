@@ -14,7 +14,13 @@ export const config = {
   isProd: process.env.NODE_ENV === "production",
   port: Number(process.env.PORT ?? 4001),
   sessionSecret: required("SESSION_SECRET"),
-  frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:5174",
+  frontendUrl:
+    process.env.FRONTEND_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:5174"),
   openaiKey: process.env.OPENAI_API_KEY ?? "",
   openaiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
