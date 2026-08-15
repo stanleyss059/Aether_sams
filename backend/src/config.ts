@@ -4,16 +4,10 @@ import { fileURLToPath } from "node:url";
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
 
-function required(name: string, fallback?: string): string {
-  const value = process.env[name] ?? fallback;
-  if (!value) throw new Error(`Missing ${name}`);
-  return value;
-}
-
 export const config = {
   isProd: process.env.NODE_ENV === "production",
   port: Number(process.env.PORT ?? 4001),
-  sessionSecret: required("SESSION_SECRET", process.env.VERCEL ? "studyforge-vercel-session-secret-32ch" : undefined),
+  sessionSecret: process.env.SESSION_SECRET || "studyforge-dev-session-secret-32ch",
   frontendUrl:
     process.env.FRONTEND_URL ??
     (process.env.VERCEL_PROJECT_PRODUCTION_URL

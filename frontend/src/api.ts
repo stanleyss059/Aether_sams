@@ -16,7 +16,19 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (!isForm && options.body) headers.set("Content-Type", "application/json");
   const res = await fetch(path, { ...options, credentials: "include", headers });
-  const json = (await res.json()) as Ok<T> | Fail;
+  const text = await res.text();
+  let json: Ok<T> | Fail | null = null;
+  try {
+    json = JSON.parse(text) as Ok<T> | Fail;
+  } catch {
+    throw new ApiError(
+      res.status >= 500
+        ? "The API crashed. Open Vercel → Logs and redeploy the latest commit."
+        : "Unexpected response from the server.",
+      "HTTP",
+      res.status,
+    );
+  }
   if (!json.success) throw new ApiError(json.error.message, json.error.code, res.status);
   return json.data;
 }

@@ -31,6 +31,9 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   console.error(err);
   res.status(500).json({
     success: false,
-    error: { message: "Something went wrong. Please try again.", code: "INTERNAL" },
+    error: {
+      message: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+      code: "INTERNAL",
+    },
   });
 }
