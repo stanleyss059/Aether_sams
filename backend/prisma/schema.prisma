@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  spaces    Space[]
+  documents Document[]
+  quizzes   Quiz[]
+  attempts  Attempt[]
+  sessions  Session[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  sid       String   @unique
+  data      String
+  expiresAt DateTime
+  userId    String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([expiresAt])
+}
+
+model Space {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  courseCode  String   @default("")
+  description String   @default("")
+  accent      String   @default("forest")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents Document[]
+
+  @@index([userId])
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  userId        String
+  spaceId       String?
+  title         String
+  filename      String
+  mimeType      String
+  extractedText String
+  summary       String   @default("")
+  createdAt     DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space   Space?  @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  quizzes Quiz[]
+
+  @@index([userId])
+  @@index([spaceId])
+}
+
+model Quiz {
+  id         String   @id @default(uuid())
+  documentId String
+  userId     String
+  title      String
+  createdAt  DateTime @default(now())
+
+  document  Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  Attempt[]
+}
+
+model Question {
+  id           String @id @default(uuid())
+  quizId       String
+  prompt       String
+  options      String
+  correctIndex Int
+  explanation  String @default("")
+  sortOrder    Int    @default(0)
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model Attempt {
+  id        String   @id @default(uuid())
+  quizId    String
+  userId    String
+  answers   String
+  score     Int
+  total     Int
+  createdAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -1,0 +1,16 @@
+Photosynthesis is the process plants use to convert light energy into chemical energy stored in sugars.
+
+It takes place mainly in chloroplasts. Chlorophyll absorbs light, especially red and blue wavelengths, and reflects green, which is why leaves look green.
+
+The overall equation is:
+carbon dioxide + water + light energy → glucose + oxygen.
+
+There are two main stages.
+
+Light-dependent reactions occur in the thylakoid membranes. Light splits water (photolysis), releasing oxygen. ATP and NADPH are produced.
+
+The Calvin cycle (light-independent reactions) occurs in the stroma. Rubisco fixes carbon dioxide onto ribulose bisphosphate. ATP and NADPH from the light reactions reduce the carbon compounds to form glucose.
+
+Factors that affect the rate include light intensity, carbon dioxide concentration, and temperature. At high light intensity the process may be limited by carbon dioxide or by temperature.
+
+Stomata allow carbon dioxide in and oxygen and water vapour out. On hot dry days stomata may close, slowing photosynthesis.
