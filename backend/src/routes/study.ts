@@ -23,7 +23,7 @@ const upload = multer({
         fs.mkdirSync(dest, { recursive: true });
         cb(null, dest);
       } catch (error) {
-        cb(error instanceof Error ? error : Errors.validation("Could not prepare the upload folder."));
+        cb(error instanceof Error ? error : new Error("Could not prepare the upload folder."), dest);
       }
     },
     filename: (_req, file, cb) => cb(null, `${randomUUID()}${path.extname(file.originalname)}`),
