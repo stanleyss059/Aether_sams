@@ -8,8 +8,7 @@
       "root": "backend",
       "framework": "express",
       "installCommand": "npm install && npx prisma generate",
-      "buildCommand": "npx prisma migrate deploy && npm run build",
-      "maxDuration": 60
+      "buildCommand": "npx prisma migrate deploy && npm run build"
     }
   },
   "rewrites": [
