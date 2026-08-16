@@ -1,13 +1,21 @@
-import { createClient, type User as SupabaseUser } from "@supabase/supabase-js";
+import { createClient, type User as SupabaseUser, type SupabaseClient } from "@supabase/supabase-js";
 import { config } from "../config.js";
 import { prisma } from "./prisma.js";
 
-export const supabaseAuth = createClient(config.supabaseUrl, config.supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+let client: SupabaseClient | null = null;
+
+function getSupabaseAuth() {
+  if (!config) throw new Error("StudyForge config is missing. Set Vercel environment variables.");
+  if (!client) {
+    client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+  }
+  return client;
+}
 
 const SUPABASE_PASSWORD_PLACEHOLDER = "supabase-auth";
 
@@ -38,7 +46,6 @@ export async function ensureLocalUser(supabaseUser: SupabaseUser): Promise<AppUs
 
   const byEmail = await prisma.user.findUnique({ where: { email } });
   if (byEmail) {
-    // Prefer the Supabase auth id going forward.
     const updated = await prisma.user.update({
       where: { id: byEmail.id },
       data: { name },
@@ -56,3 +63,11 @@ export async function ensureLocalUser(supabaseUser: SupabaseUser): Promise<AppUs
   });
   return { id: created.id, name: created.name, email: created.email };
 }
+
+export const supabaseAuth = {
+  auth: {
+    getUser(token: string) {
+      return getSupabaseAuth().auth.getUser(token);
+    },
+  },
+};

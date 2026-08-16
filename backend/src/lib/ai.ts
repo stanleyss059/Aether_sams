@@ -18,7 +18,7 @@ const generatedSchema = z.object({
 type Generated = z.infer<typeof generatedSchema>;
 
 export async function generateQuizFromText(title: string, text: string, count = 50): Promise<Generated> {
-  if (!config.openaiKey) {
+  if (!config?.openaiKey) {
     throw Errors.validation(
       "Add OPENAI_API_KEY in your environment (Vercel → Settings → Environment Variables, or backend/.env locally), then redeploy or restart.",
     );

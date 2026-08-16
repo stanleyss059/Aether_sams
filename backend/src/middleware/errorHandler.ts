@@ -23,9 +23,14 @@ export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {
   if (header?.startsWith("Bearer ")) {
     const token = header.slice("Bearer ".length).trim();
     if (token) {
-      const { data, error } = await supabaseAuth.auth.getUser(token);
-      if (!error && data.user) {
-        req.user = await ensureLocalUser(data.user);
+      try {
+        const { data, error } = await supabaseAuth.auth.getUser(token);
+        if (!error && data.user) {
+          req.user = await ensureLocalUser(data.user);
+        }
+      } catch (error) {
+        console.error("attachSupabaseUser failed:", error);
+        throw error;
       }
     }
   }
