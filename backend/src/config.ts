@@ -25,6 +25,7 @@ const envSchema = z
     OPENAI_BASE_URL: z.url().default("https://api.openai.com/v1"),
     OPENAI_MODEL: z.string().min(1).default("gpt-4o-mini"),
     AI_TIMEOUT_MS: z.coerce.number().int().min(5_000).max(55_000).default(45_000),
+    ADMIN_EMAIL: z.string().optional().default(""),
   })
   .superRefine((env, ctx) => {
     if (isProd && !env.DIRECT_URL) {
@@ -68,5 +69,6 @@ export const config = parsed.success
       openaiBaseUrl: parsed.data.OPENAI_BASE_URL,
       openaiModel: parsed.data.OPENAI_MODEL,
       aiTimeoutMs: parsed.data.AI_TIMEOUT_MS,
+      adminEmail: parsed.data.ADMIN_EMAIL?.trim().toLowerCase() || null,
     }
   : null;

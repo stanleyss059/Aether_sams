@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
+import { logAudit } from "../lib/audit.js";
 import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
 
 export const attemptsRouter = Router();
@@ -40,6 +41,13 @@ attemptsRouter.post(
         score,
         total: quiz.questions.length,
       },
+    });
+    logAudit({
+      req,
+      action: "quiz.attempt",
+      entityType: "attempt",
+      entityId: attempt.id,
+      metadata: { quizId: quiz.id, score, total: quiz.questions.length },
     });
     res.status(201).json({
       success: true,

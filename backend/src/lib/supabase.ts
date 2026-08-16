@@ -1,4 +1,5 @@
 import { createClient, type User as SupabaseUser, type SupabaseClient } from "@supabase/supabase-js";
+import type { UserRole } from "@prisma/client";
 import { config } from "../config.js";
 import { prisma } from "./prisma.js";
 
@@ -19,12 +20,39 @@ function getSupabaseAuth() {
 
 const SUPABASE_PASSWORD_PLACEHOLDER = "supabase-auth";
 
-export type AppUser = { id: string; name: string; email: string };
+export type AppUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  suspendedAt: string | null;
+};
 
 function displayName(user: SupabaseUser) {
   const metaName = user.user_metadata?.name;
   if (typeof metaName === "string" && metaName.trim()) return metaName.trim();
   return user.email?.split("@")[0] ?? "Student";
+}
+
+function toAppUser(user: {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  suspendedAt: Date | null;
+}): AppUser {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    suspendedAt: user.suspendedAt ? user.suspendedAt.toISOString() : null,
+  };
+}
+
+function desiredRole(email: string, current: UserRole): UserRole {
+  if (config?.adminEmail && email === config.adminEmail) return "ADMIN";
+  return current;
 }
 
 export async function ensureLocalUser(supabaseUser: SupabaseUser): Promise<AppUser> {
@@ -34,23 +62,25 @@ export async function ensureLocalUser(supabaseUser: SupabaseUser): Promise<AppUs
   const name = displayName(supabaseUser);
   const existing = await prisma.user.findUnique({ where: { id: supabaseUser.id } });
   if (existing) {
-    if (existing.name !== name || existing.email !== email) {
+    const role = desiredRole(email, existing.role);
+    if (existing.name !== name || existing.email !== email || existing.role !== role) {
       const updated = await prisma.user.update({
         where: { id: existing.id },
-        data: { name, email },
+        data: { name, email, role },
       });
-      return { id: updated.id, name: updated.name, email: updated.email };
+      return toAppUser(updated);
     }
-    return { id: existing.id, name: existing.name, email: existing.email };
+    return toAppUser(existing);
   }
 
   const byEmail = await prisma.user.findUnique({ where: { email } });
   if (byEmail) {
+    const role = desiredRole(email, byEmail.role);
     const updated = await prisma.user.update({
       where: { id: byEmail.id },
-      data: { name },
+      data: { name, role },
     });
-    return { id: updated.id, name: updated.name, email: updated.email };
+    return toAppUser(updated);
   }
 
   const created = await prisma.user.create({
@@ -59,9 +89,10 @@ export async function ensureLocalUser(supabaseUser: SupabaseUser): Promise<AppUs
       name,
       email,
       passwordHash: SUPABASE_PASSWORD_PLACEHOLDER,
+      role: desiredRole(email, "USER"),
     },
   });
-  return { id: created.id, name: created.name, email: created.email };
+  return toAppUser(created);
 }
 
 export const supabaseAuth = {

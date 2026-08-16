@@ -38,7 +38,87 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   return json.data;
 }
 
-export type User = { id: string; name: string; email: string };
+export type UserRole = "USER" | "ADMIN";
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  suspendedAt: string | null;
+};
+
+export type AdminOwner = { id: string; name: string; email: string };
+
+export type AdminDashboard = {
+  stats: {
+    users: number;
+    spaces: number;
+    documents: number;
+    quizzes: number;
+    attempts: number;
+    suspended: number;
+  };
+  recentActivity: AuditLogEntry[];
+};
+
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  suspendedAt: string | null;
+  createdAt: string;
+  spaceCount: number;
+  documentCount: number;
+  quizCount: number;
+  attemptCount: number;
+};
+
+export type AdminDocument = {
+  id: string;
+  title: string;
+  filename: string;
+  createdAt: string;
+  quizCount: number;
+  owner: AdminOwner;
+  space: { id: string; title: string; courseCode: string } | null;
+};
+
+export type AdminSpace = {
+  id: string;
+  title: string;
+  courseCode: string;
+  description: string;
+  accent: string;
+  createdAt: string;
+  updatedAt: string;
+  documentCount: number;
+  quizCount: number;
+  owner: AdminOwner;
+};
+
+export type AuditLogEntry = {
+  id: string;
+  actorUserId: string | null;
+  actorEmail: string | null;
+  actorName: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  metadata: Record<string, unknown>;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+};
+
+export type Paginated<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
 export type Accent = "forest" | "gold" | "clay" | "slate";
 export type SpaceSummary = {
   id: string;

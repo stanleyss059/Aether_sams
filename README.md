@@ -6,7 +6,7 @@ Upload lecture notes. Get study summaries and multiple-choice quizzes generated 
 
 You need Node.js 22+.
 
-1. Copy `backend/.env.example` → `backend/.env` and fill in values (database URLs, session secret, Supabase URL/anon key, OpenAI-compatible key).
+1. Copy `backend/.env.example` → `backend/.env` and fill in values (database URLs, session secret, Supabase URL/anon key, OpenAI-compatible key, and `ADMIN_EMAIL` for the admin console).
 2. Copy `frontend/.env.example` → `frontend/.env` with the same Supabase URL + anon key.
 
 3. Install and start:
@@ -45,6 +45,7 @@ In the Supabase dashboard, under **Authentication → Providers → Email**, you
 | `OPENAI_BASE_URL` | e.g. `https://openrouter.ai/api/v1` |
 | `OPENAI_MODEL` | e.g. `openai/gpt-4o-mini` |
 | `FRONTEND_URL` | Your live site URL, e.g. `https://your-app.vercel.app` |
+| `ADMIN_EMAIL` | Email of the account that should receive admin access (case-insensitive) |
 
 4. Redeploy after saving env vars.
 5. Migrations are **not** run during the build, so a missing variable can never block a deploy. Apply schema changes yourself before deploying:
@@ -55,7 +56,8 @@ npx prisma migrate deploy
 ```
 
 6. Seed is **not** automatic on Vercel — create an account with **Register** in the app (Supabase Auth).
-7. Check `/api/health` and `/api/health/db` on the deployment to confirm environment and database connectivity.
+7. Set `ADMIN_EMAIL` to that account’s email, then sign in again (or redeploy) so StudyForge promotes it to `ADMIN`. Open **Admin** in the nav for the activity console (users, uploads, spaces, profile, audit logs).
+8. Check `/api/health` and `/api/health/db` on the deployment to confirm environment and database connectivity.
 
 SQLite is not supported. Both local and production use the Postgres database that ships with your Supabase project (**Connect** button in the dashboard → **ORMs / Prisma**).
 
@@ -65,3 +67,4 @@ SQLite is not supported. Both local and production use the Postgres database tha
 - PDF, Word (.docx), and text uploads
 - Study notes + MCQs generated only from your material
 - Quizzes with progress saved in the browser until submit
+- Admin console (`ADMIN_EMAIL`) with users, uploads, spaces, and audit logs

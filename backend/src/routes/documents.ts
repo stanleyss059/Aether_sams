@@ -5,6 +5,7 @@ import multer from "multer";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
+import { logAudit } from "../lib/audit.js";
 import { extractText } from "../lib/extract.js";
 import { generateQuizFromText } from "../lib/ai.js";
 import { ownedDocument, ownedSpace } from "../lib/study.js";
@@ -124,6 +125,13 @@ documentsRouter.post(
     if (metadata.spaceId) {
       await prisma.space.update({ where: { id: metadata.spaceId }, data: { updatedAt: new Date() } });
     }
+    logAudit({
+      req,
+      action: "document.create",
+      entityType: "document",
+      entityId: document.id,
+      metadata: { title: document.title, filename: document.filename, spaceId: document.spaceId },
+    });
     res.status(201).json({
       success: true,
       data: { id: document.id, title: document.title, filename: document.filename },
@@ -177,6 +185,13 @@ documentsRouter.patch(
     if (body.spaceId) {
       await prisma.space.update({ where: { id: body.spaceId }, data: { updatedAt: new Date() } });
     }
+    logAudit({
+      req,
+      action: "document.update",
+      entityType: "document",
+      entityId: updated.id,
+      metadata: { spaceId: updated.spaceId },
+    });
     res.json({ success: true, data: { id: updated.id, spaceId: updated.spaceId } });
   }),
 );
@@ -189,6 +204,13 @@ documentsRouter.delete(
     if (document.spaceId) {
       await prisma.space.update({ where: { id: document.spaceId }, data: { updatedAt: new Date() } });
     }
+    logAudit({
+      req,
+      action: "document.delete",
+      entityType: "document",
+      entityId: document.id,
+      metadata: { title: document.title, filename: document.filename },
+    });
     res.json({ success: true, data: { id: document.id } });
   }),
 );
@@ -218,6 +240,13 @@ documentsRouter.post(
         },
         include: { questions: true },
       });
+    });
+    logAudit({
+      req,
+      action: "quiz.generate",
+      entityType: "quiz",
+      entityId: quiz.id,
+      metadata: { documentId: document.id, questionCount: quiz.questions.length },
     });
     res.status(201).json({
       success: true,

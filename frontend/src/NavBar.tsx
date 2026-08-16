@@ -1,19 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-
-const LINKS = [
-  { to: "/", label: "Dashboard", match: (path: string) => path === "/" },
-  { to: "/spaces", label: "Spaces", match: (path: string) => path.startsWith("/spaces") },
-  { to: "/uploads", label: "My uploads", match: (path: string) => path.startsWith("/uploads") || path.startsWith("/documents") },
-  { to: "/profile", label: "Profile", match: (path: string) => path.startsWith("/profile") },
-];
 
 export function NavBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+
+  const links = useMemo(() => {
+    const items = [
+      { to: "/", label: "Dashboard", match: (path: string) => path === "/" },
+      { to: "/spaces", label: "Spaces", match: (path: string) => path.startsWith("/spaces") },
+      {
+        to: "/uploads",
+        label: "My uploads",
+        match: (path: string) => path.startsWith("/uploads") || path.startsWith("/documents"),
+      },
+      { to: "/profile", label: "Profile", match: (path: string) => path === "/profile" },
+    ];
+    if (user?.role === "ADMIN") {
+      items.push({
+        to: "/admin",
+        label: "Admin",
+        match: (path: string) => path.startsWith("/admin"),
+      });
+    }
+    return items;
+  }, [user?.role]);
 
   useEffect(() => {
     setOpen(false);
@@ -26,7 +40,7 @@ export function NavBar() {
           StudyForge
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
-          {LINKS.map((link) => (
+          {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
@@ -65,7 +79,7 @@ export function NavBar() {
       {open ? (
         <nav className="border-t border-white/10 px-4 py-3 md:hidden">
           <div className="mx-auto flex max-w-5xl flex-col gap-1">
-            {LINKS.map((link) => (
+            {links.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}

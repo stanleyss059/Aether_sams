@@ -10,12 +10,27 @@ import { QuizPage } from "./QuizPage";
 import { SpacePage } from "./SpacePage";
 import { SpacesPage } from "./SpacesPage";
 import { UploadsPage } from "./UploadsPage";
+import { AdminShell } from "./admin/AdminShell";
+import { AdminDashboardPage } from "./admin/AdminDashboardPage";
+import { AdminUsersPage } from "./admin/AdminUsersPage";
+import { AdminUploadsPage } from "./admin/AdminUploadsPage";
+import { AdminSpacesPage } from "./admin/AdminSpacesPage";
+import { AdminAuditLogsPage } from "./admin/AdminAuditLogsPage";
+import { AdminProfilePage } from "./admin/AdminProfilePage";
 
 function Guard() {
   const { user, loading } = useAuth();
   if (loading) return <p className="p-8 text-muted">Loading…</p>;
   if (!user) return <Navigate to="/login" replace />;
   return <Shell />;
+}
+
+function AdminGuard() {
+  const { user, loading } = useAuth();
+  if (loading) return <p className="p-8 text-muted">Loading…</p>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "ADMIN") return <Navigate to="/" replace />;
+  return <Outlet />;
 }
 
 function Shell() {
@@ -118,7 +133,7 @@ function RegisterPage() {
         </label>
         <label className="block text-sm font-semibold">
           Password
-          <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" type="password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
         <button className="w-full rounded-md bg-forest py-2.5 font-semibold text-white" disabled={busy}>
           {busy ? "Creating…" : "Register"}
@@ -299,6 +314,16 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/documents/:id" element={<DocumentPage />} />
           <Route path="/quizzes/:id" element={<QuizPage />} />
+          <Route path="/admin" element={<AdminGuard />}>
+            <Route element={<AdminShell />}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="uploads" element={<AdminUploadsPage />} />
+              <Route path="spaces" element={<AdminSpacesPage />} />
+              <Route path="profile" element={<AdminProfilePage />} />
+              <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+            </Route>
+          </Route>
         </Route>
       </Routes>
     </AuthProvider>

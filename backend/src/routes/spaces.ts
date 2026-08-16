@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { Errors } from "../lib/errors.js";
+import { logAudit } from "../lib/audit.js";
 import { prisma } from "../lib/prisma.js";
 import { ownedSpace, serializeSpace, spaceInput } from "../lib/study.js";
 import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
@@ -47,6 +48,13 @@ spacesRouter.post(
       data: { ...spaceInput.parse(req.body), userId: req.user!.id },
       include: { documents: true },
     });
+    logAudit({
+      req,
+      action: "space.create",
+      entityType: "space",
+      entityId: space.id,
+      metadata: { title: space.title, courseCode: space.courseCode },
+    });
     res.status(201).json({ success: true, data: serializeSpace(space) });
   }),
 );
@@ -93,6 +101,13 @@ spacesRouter.patch(
       data: spaceInput.partial().parse(req.body),
       include: { documents: { select: { id: true, _count: { select: { quizzes: true } } } } },
     });
+    logAudit({
+      req,
+      action: "space.update",
+      entityType: "space",
+      entityId: space.id,
+      metadata: { title: space.title },
+    });
     res.json({ success: true, data: serializeSpace(space) });
   }),
 );
@@ -102,6 +117,12 @@ spacesRouter.delete(
   asyncHandler(async (req, res) => {
     await ownedSpace(req.user!.id, req.params.id);
     await prisma.space.delete({ where: { id: req.params.id } });
+    logAudit({
+      req,
+      action: "space.delete",
+      entityType: "space",
+      entityId: req.params.id,
+    });
     res.json({ success: true, data: { id: req.params.id } });
   }),
 );

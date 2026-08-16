@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import multer from "multer";
-import { AppError } from "../lib/errors.js";
+import { AppError, Errors } from "../lib/errors.js";
 import { ensureLocalUser, type AppUser, supabaseAuth } from "../lib/supabase.js";
 
 declare global {
@@ -39,7 +39,27 @@ export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) {
-    next(new AppError(401, "You must be signed in.", "UNAUTHORIZED"));
+    next(Errors.unauthorized());
+    return;
+  }
+  if (req.user.suspendedAt) {
+    next(new AppError(403, "Your account has been suspended.", "SUSPENDED"));
+    return;
+  }
+  next();
+}
+
+export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
+  if (!req.user) {
+    next(Errors.unauthorized());
+    return;
+  }
+  if (req.user.suspendedAt) {
+    next(new AppError(403, "Your account has been suspended.", "SUSPENDED"));
+    return;
+  }
+  if (req.user.role !== "ADMIN") {
+    next(Errors.forbidden("Admin access required."));
     return;
   }
   next();
