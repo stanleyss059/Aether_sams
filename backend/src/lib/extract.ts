@@ -1,20 +1,27 @@
 import path from "node:path";
 import { createRequire } from "node:module";
-import mammoth from "mammoth";
 
 const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
+
+type PdfParse = (buf: Buffer) => Promise<{ text: string }>;
+
+// Loaded on demand: pdf-parse's package entry runs a self-test that reads a
+// bundled sample PDF, which is not present in a serverless deployment.
+function loadPdfParse(): PdfParse {
+  return require("pdf-parse/lib/pdf-parse.js") as PdfParse;
+}
 
 export async function extractText(buffer: Buffer, mimeType: string, originalName: string): Promise<string> {
   const ext = path.extname(originalName).toLowerCase();
   if (mimeType === "application/pdf" || ext === ".pdf") {
-    const result = await pdfParse(buffer);
+    const result = await loadPdfParse()(buffer);
     return clean(result.text);
   }
   if (
     mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     ext === ".docx"
   ) {
+    const { default: mammoth } = await import("mammoth");
     const result = await mammoth.extractRawText({ buffer });
     return clean(result.value);
   }
