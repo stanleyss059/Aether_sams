@@ -46,8 +46,16 @@ In the Supabase dashboard, under **Authentication → Providers → Email**, you
 | `OPENAI_MODEL` | e.g. `openai/gpt-4o-mini` |
 | `FRONTEND_URL` | Your live site URL, e.g. `https://your-app.vercel.app` |
 
-4. Redeploy after saving env vars. Migrations run during the backend build via `prisma migrate deploy`.
-5. Seed is **not** automatic on Vercel — create an account with **Register** in the app (Supabase Auth).
+4. Redeploy after saving env vars.
+5. Migrations are **not** run during the build, so a missing variable can never block a deploy. Apply schema changes yourself before deploying:
+
+```powershell
+cd backend
+npx prisma migrate deploy
+```
+
+6. Seed is **not** automatic on Vercel — create an account with **Register** in the app (Supabase Auth).
+7. Check `/api/health` and `/api/health/db` on the deployment to confirm environment and database connectivity.
 
 SQLite is not supported. Both local and production use the Postgres database that ships with your Supabase project (**Connect** button in the dashboard → **ORMs / Prisma**).
 
