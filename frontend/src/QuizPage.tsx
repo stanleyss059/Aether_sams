@@ -7,7 +7,7 @@ const LETTERS = ["A", "B", "C", "D"] as const;
 type Draft = { answers: Record<string, number>; index: number };
 
 function draftKey(quizId: string) {
-  return `studyforge.quiz-draft.${quizId}`;
+  return `aether.quiz-draft.${quizId}`;
 }
 
 function readDraft(quizId: string): Draft | null {

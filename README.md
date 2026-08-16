@@ -1,4 +1,4 @@
-# StudyForge
+# Aether
 
 Upload lecture notes. Get study summaries and multiple-choice quizzes generated **from that file**, not from a generic question bank.
 
@@ -58,7 +58,7 @@ npx prisma migrate deploy
 ```
 
 6. Seed is **not** automatic on Vercel — create an account with **Register** in the app (Supabase Auth).
-7. Set `ADMIN_EMAIL` to that account’s email, then sign in again (or redeploy) so StudyForge promotes it to `ADMIN`. Open **Admin** in the nav for the activity console (users, uploads, spaces, profile, audit logs).
+7. Set `ADMIN_EMAIL` to that account’s email, then sign in again (or redeploy) so Aether promotes it to `ADMIN`. Open **Admin** in the nav for the activity console (users, uploads, spaces, profile, audit logs).
 8. Check `/api/health` and `/api/health/db` on the deployment to confirm environment and database connectivity.
 
 SQLite is not supported. Both local and production use the Postgres database that ships with your Supabase project (**Connect** button in the dashboard → **ORMs / Prisma**).

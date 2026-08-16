@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw new Error(error.message);
         if (!data.session) throw new Error("Sign-in did not return a session.");
         const me = await api<{ user: User | null }>("/api/auth/me");
-        if (!me.user) throw new Error("Could not load your StudyForge account.");
+        if (!me.user) throw new Error("Could not load your Aether account.");
         if (me.user.suspendedAt) {
           await supabase.auth.signOut();
           throw new ApiError("Your account has been suspended.", "SUSPENDED", 403);

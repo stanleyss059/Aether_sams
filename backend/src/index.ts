@@ -27,11 +27,11 @@ app.use((req, res, next) => {
     (real) => real(req, res, next),
     (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      console.error("StudyForge failed to start:", error);
+      console.error("Aether failed to start:", error);
       res.status(500).json({
         success: false,
         error: {
-          message: `StudyForge failed to start: ${message}`,
+          message: `Aether failed to start: ${message}`,
           code: "BOOTSTRAP",
           trace: req.query.trace === "1" && error instanceof Error ? error.stack?.split("\n").slice(0, 8) : undefined,
         },
@@ -46,11 +46,11 @@ if (!process.env.VERCEL) {
   void (async () => {
     const { config, configError } = await import("./config.js");
     if (!config) {
-      console.error(`Invalid StudyForge environment: ${configError}`);
+      console.error(`Invalid Aether environment: ${configError}`);
       process.exit(1);
     }
     app.listen(config.port, () => {
-      console.log(`StudyForge API listening on port ${config.port}`);
+      console.log(`Aether API listening on port ${config.port}`);
     });
   })();
 }

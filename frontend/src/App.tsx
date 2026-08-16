@@ -152,9 +152,9 @@ function AuthCard({ title, subtitle, children }: { title: string; subtitle: stri
       <div className="w-full max-w-md rounded-3xl border border-line bg-white p-7 shadow-[0_24px_70px_rgb(15_23_42/0.10)] sm:p-9">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-forest text-sm font-extrabold text-white shadow-md">
-            SF
+            A
           </span>
-          <p className="text-lg font-bold tracking-[-0.03em] text-ink">StudyForge</p>
+          <p className="text-lg font-bold tracking-[-0.03em] text-ink">Aether</p>
         </div>
         <h1 className="mt-8 text-3xl font-bold tracking-[-0.04em]">{title}</h1>
         <p className="mt-2 mb-7 text-sm leading-6 text-muted">{subtitle}</p>

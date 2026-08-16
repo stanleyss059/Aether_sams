@@ -38,9 +38,9 @@ export function NavBar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
         <Link to="/" className="flex shrink-0 items-center gap-2.5 font-bold text-ink no-underline">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-forest text-sm font-extrabold text-white shadow-sm">
-            SF
+            A
           </span>
-          <span className="text-lg tracking-[-0.03em]">StudyForge</span>
+          <span className="text-lg tracking-[-0.03em]">Aether</span>
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {links.map((link) => (

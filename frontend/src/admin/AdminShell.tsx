@@ -15,7 +15,7 @@ export function AdminShell() {
       <div className="rounded-2xl border border-line bg-white p-6">
         <span className="inline-flex rounded-full bg-forest/10 px-2.5 py-1 text-xs font-bold text-forest">ADMIN</span>
         <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">Activity console</h1>
-        <p className="mt-1 text-muted">Monitor accounts, content, and every meaningful action across StudyForge.</p>
+        <p className="mt-1 text-muted">Monitor accounts, content, and every meaningful action across Aether.</p>
       </div>
 
       <nav className="flex flex-wrap gap-1 rounded-xl border border-line bg-white p-1.5">

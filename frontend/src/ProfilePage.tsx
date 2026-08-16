@@ -64,7 +64,7 @@ export function ProfilePage() {
       <div>
         <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Account</p>
         <h1 className="font-serif text-3xl">Profile</h1>
-        <p className="text-muted">Your StudyForge account stays private to you.</p>
+        <p className="text-muted">Your Aether account stays private to you.</p>
       </div>
 
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}

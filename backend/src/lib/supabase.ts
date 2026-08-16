@@ -6,7 +6,7 @@ import { prisma } from "./prisma.js";
 let client: SupabaseClient | null = null;
 
 function getSupabaseAuth() {
-  if (!config) throw new Error("StudyForge config is missing. Set Vercel environment variables.");
+  if (!config) throw new Error("Aether config is missing. Set Vercel environment variables.");
   if (!client) {
     client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
       auth: {

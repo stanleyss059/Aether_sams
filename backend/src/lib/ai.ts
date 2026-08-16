@@ -34,7 +34,7 @@ export async function generateQuizFromText(title: string, text: string, count = 
         Authorization: `Bearer ${config.openaiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": config.frontendUrl,
-        "X-Title": "StudyForge",
+        "X-Title": "Aether",
       },
       body: JSON.stringify({
         model: config.openaiModel,

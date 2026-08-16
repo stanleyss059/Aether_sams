@@ -1,12 +1,12 @@
-# StudyForge User Guide
+# Aether User Guide
 
-StudyForge turns **your** lecture notes into study summaries and multiple-choice quizzes. Questions come from the file you upload — not a generic question bank.
+Aether turns **your** lecture notes into study summaries and multiple-choice quizzes. Questions come from the file you upload — not a generic question bank.
 
 ---
 
 ## 1. Create an account
 
-1. Open the StudyForge site.
+1. Open the Aether site.
 2. Click **Create an account** (or go to Register).
 3. Enter your **name**, **email**, and **password** (at least 6 characters).
 4. Click **Register**.
@@ -50,7 +50,7 @@ Supported types: **PDF**, **Word (.docx)**, and **text** (`.txt` / `.md`).
 2. Click **Upload**.
 3. Choose your file.
 
-StudyForge reads the text from the file and stores that for studying. Large files may take a moment to prepare.
+Aether reads the text from the file and stores that for studying. Large files may take a moment to prepare.
 
 Tips:
 
