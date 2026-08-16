@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
-import { api, ApiError, type SpaceDetail } from "./api";
+import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge } from "./FileBadge";
 import { prepareUpload } from "./prepareUpload";
@@ -16,18 +16,71 @@ export function SpacePage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [space, setSpace] = useState<SpaceDetail | null>(null);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState("");
+  const [courseCode, setCourseCode] = useState("");
+  const [description, setDescription] = useState("");
+  const [accent, setAccent] = useState<Accent>("forest");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingDelete | null>(null);
 
   async function load() {
     if (!id) return;
-    setSpace(await api<SpaceDetail>(`/api/spaces/${id}`));
+    const next = await api<SpaceDetail>(`/api/spaces/${id}`);
+    setSpace(next);
+    setTitle(next.title);
+    setCourseCode(next.courseCode);
+    setDescription(next.description);
+    setAccent(accentOf(next.accent));
   }
 
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
   }, [id]);
+
+  function openEdit() {
+    if (!space) return;
+    setTitle(space.title);
+    setCourseCode(space.courseCode);
+    setDescription(space.description);
+    setAccent(accentOf(space.accent));
+    setEditing(true);
+    setError("");
+    setMessage("");
+  }
+
+  async function saveEdit(e: FormEvent) {
+    e.preventDefault();
+    if (!id) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await api<SpaceSummary>(`/api/spaces/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title, courseCode, description, accent }),
+      });
+      setSpace((current) =>
+        current
+          ? {
+              ...current,
+              title: updated.title,
+              courseCode: updated.courseCode,
+              description: updated.description,
+              accent: updated.accent,
+            }
+          : current,
+      );
+      setEditing(false);
+      setMessage("Space updated.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not update this space.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onPickFile(file: File | undefined) {
     if (!file || !id) return;
@@ -138,7 +191,15 @@ export function SpacePage() {
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            {busy ? "Preparing upload…" : "Upload"}
+            {busy && !editing ? "Preparing upload…" : "Upload"}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
+            onClick={() => (editing ? setEditing(false) : openEdit())}
+            disabled={busy}
+          >
+            {editing ? "Cancel" : "Edit"}
           </button>
           <button
             type="button"
@@ -152,6 +213,72 @@ export function SpacePage() {
       </div>
 
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
+      {message ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{message}</p> : null}
+
+      {editing ? (
+        <form className="rounded-2xl border border-line bg-white p-5" onSubmit={saveEdit}>
+          <h2 className="text-xl font-bold tracking-[-0.03em]">Edit space</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-semibold">
+              Space name
+              <input
+                className="mt-1 w-full rounded-md border border-line px-3 py-2.5"
+                required
+                minLength={1}
+                maxLength={80}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </label>
+            <label className="block text-sm font-semibold">
+              Course code
+              <input
+                className="mt-1 w-full rounded-md border border-line px-3 py-2.5"
+                maxLength={32}
+                value={courseCode}
+                onChange={(e) => setCourseCode(e.target.value)}
+              />
+            </label>
+          </div>
+          <label className="mt-3 block text-sm font-semibold">
+            Description
+            <input
+              className="mt-1 w-full rounded-md border border-line px-3 py-2.5"
+              maxLength={280}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </label>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(Object.keys(ACCENTS) as Accent[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setAccent(key)}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
+                  accent === key ? "border-forest bg-forest/5 text-forest" : "border-line bg-white text-ink"
+                }`}
+              >
+                <span className={`h-3 w-3 rounded-full ${ACCENTS[key].bar}`} />
+                {ACCENTS[key].name}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button className="rounded-lg bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy}>
+              {busy ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink"
+              disabled={busy}
+              onClick={() => setEditing(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       <section>
         <h2 className="text-xl font-bold tracking-[-0.03em]">Uploaded materials</h2>
