@@ -9,7 +9,10 @@ let pending: Promise<RequestHandler> | null = null;
 
 function loadApp(): Promise<RequestHandler> {
   if (!pending) {
-    pending = import("./app.js")
+    // Named create-app (not app) so Vercel Express entry detection uses this
+    // file — src/app.* is preferred over src/index.* and must default-export
+    // a function or server.
+    pending = import("./create-app.js")
       .then((module) => module.createApp() as unknown as RequestHandler)
       .catch((error: unknown) => {
         pending = null;

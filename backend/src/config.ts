@@ -3,7 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
-dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
+// Local only: on Vercel, env comes from the project settings (and a missing
+// backend/.env would otherwise print dotenv's "injected env (0)" tips in logs).
+if (!process.env.VERCEL) {
+  dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
+}
 
 const isProd = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
 const envSchema = z
