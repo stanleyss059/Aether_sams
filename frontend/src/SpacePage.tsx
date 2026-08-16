@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type SpaceDetail } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
+import { FileBadge } from "./FileBadge";
 import { prepareUpload } from "./prepareUpload";
 
 type PendingDelete =
@@ -114,13 +115,11 @@ export function SpacePage() {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          {space.courseCode ? (
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${look.chip}`}>{space.courseCode}</span>
-          ) : (
-            <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Space</p>
-          )}
-          <h1 className="mt-1 font-serif text-3xl">{space.title}</h1>
-          {space.description ? <p className="text-muted">{space.description}</p> : null}
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${look.chip}`}>
+            {space.courseCode || "SPACE"}
+          </span>
+          <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">{space.title}</h1>
+          {space.description ? <p className="mt-1 text-muted">{space.description}</p> : null}
           <p className="mt-1 text-sm text-muted">
             {space.documentCount} material{space.documentCount === 1 ? "" : "s"}
           </p>
@@ -135,7 +134,7 @@ export function SpacePage() {
           />
           <button
             type="button"
-            className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
+            className="rounded-lg bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
@@ -143,7 +142,7 @@ export function SpacePage() {
           </button>
           <button
             type="button"
-            className="rounded-md border border-danger/30 px-3 py-2.5 text-sm font-semibold text-danger"
+            className="rounded-lg border border-danger/30 px-4 py-2.5 text-sm font-semibold text-danger"
             onClick={() => setPending({ kind: "space" })}
             disabled={busy}
           >
@@ -155,7 +154,7 @@ export function SpacePage() {
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
 
       <section>
-        <h2 className="font-serif text-xl">Uploaded materials</h2>
+        <h2 className="text-xl font-bold tracking-[-0.03em]">Uploaded materials</h2>
         {space.documents.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed border-line bg-white/60 px-4 py-10 text-center text-muted">
             Nothing in this space yet. Click Upload to add a PDF, Word file, or notes.
@@ -163,28 +162,36 @@ export function SpacePage() {
         ) : (
           <div className="mt-3 grid gap-3">
             {space.documents.map((doc) => (
-              <div
+              <article
                 key={doc.id}
-                className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 transition hover:border-forest/40 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-forest/30 sm:flex-row sm:items-center sm:gap-5"
               >
-                <Link to={`/documents/${doc.id}`} className="min-w-0 flex-1 no-underline">
-                  <p className="font-serif text-xl text-ink">{doc.title}</p>
-                  <p className="text-sm text-muted">
-                    {doc.filename} · {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
-                  </p>
+                <Link to={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-4 no-underline">
+                  <FileBadge filename={doc.filename} />
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-ink">{doc.title}</p>
+                    <p className="mt-0.5 truncate text-sm text-muted">{doc.filename}</p>
+                    <span
+                      className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        doc.quizCount > 0 ? "bg-forest/10 text-forest" : "bg-slate/10 text-slate"
+                      }`}
+                    >
+                      {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
+                    </span>
+                  </div>
                 </Link>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   {doc.latestQuizId ? (
                     <Link
                       to={`/quizzes/${doc.latestQuizId}`}
-                      className="rounded-md bg-forest px-3 py-2 text-sm font-semibold text-white no-underline"
+                      className="rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white no-underline"
                     >
                       Attempt quiz
                     </Link>
                   ) : null}
                   <button
                     type="button"
-                    className="rounded-md border border-forest px-3 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
+                    className="rounded-lg border border-forest/40 px-4 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
                     disabled={busy || generatingId !== null}
                     onClick={() => generateQuiz(doc.id)}
                   >
@@ -196,14 +203,14 @@ export function SpacePage() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger disabled:opacity-60"
+                    className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-semibold text-danger disabled:opacity-60"
                     disabled={busy || generatingId !== null}
                     onClick={() => setPending({ kind: "document", id: doc.id, title: doc.title })}
                   >
                     Remove
                   </button>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}

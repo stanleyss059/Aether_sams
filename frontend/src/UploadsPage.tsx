@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError, type DocListItem } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
+import { FileBadge } from "./FileBadge";
 
 export function UploadsPage() {
   const [docs, setDocs] = useState<DocListItem[]>([]);
@@ -36,9 +37,9 @@ export function UploadsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Library</p>
-        <h1 className="font-serif text-3xl">My uploads</h1>
-        <p className="text-muted">Every file you have uploaded, across all course spaces.</p>
+        <span className="inline-flex rounded-full bg-forest/10 px-2.5 py-1 text-xs font-bold text-forest">LIBRARY</span>
+        <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">My uploads</h1>
+        <p className="mt-1 text-muted">Every file you have uploaded, across all course spaces.</p>
       </div>
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-muted">Loading uploads…</p> : null}
@@ -49,17 +50,28 @@ export function UploadsPage() {
       ) : (
         <div className="grid gap-3">
           {docs.map((doc) => (
-            <div
+            <article
               key={doc.id}
-              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-forest/30 sm:flex-row sm:items-center sm:gap-5"
             >
-              <Link to={`/documents/${doc.id}`} className="min-w-0 no-underline">
-                <p className="font-serif text-xl text-ink">{doc.title}</p>
-                <p className="text-sm text-muted">
-                  {doc.filename}
-                  {doc.space ? ` · ${doc.space.courseCode ? `${doc.space.courseCode} · ` : ""}${doc.space.title}` : " · Unfiled"}
-                  {` · ${doc.quizCount} quiz${doc.quizCount === 1 ? "" : "zes"}`}
-                </p>
+              <Link to={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-4 no-underline">
+                <FileBadge filename={doc.filename} />
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold text-ink">{doc.title}</p>
+                  <p className="mt-0.5 truncate text-sm text-muted">{doc.filename}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full bg-slate/10 px-2 py-0.5 text-xs font-semibold text-slate">
+                      {doc.space ? doc.space.courseCode || doc.space.title : "Unfiled"}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        doc.quizCount > 0 ? "bg-forest/10 text-forest" : "bg-slate/10 text-slate"
+                      }`}
+                    >
+                      {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
+                    </span>
+                  </div>
+                </div>
               </Link>
               <div className="flex shrink-0 flex-wrap gap-2">
                 <Link
@@ -77,7 +89,7 @@ export function UploadsPage() {
                   Remove
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}

@@ -37,7 +37,7 @@ function Shell() {
   return (
     <div className="min-h-screen">
       <NavBar />
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <Outlet />
       </main>
     </div>
@@ -148,11 +148,16 @@ function RegisterPage() {
 
 function AuthCard({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
-        <p className="font-serif text-2xl text-forest">StudyForge</p>
-        <h1 className="mt-4 font-serif text-3xl">{title}</h1>
-        <p className="mt-1 mb-6 text-sm text-muted">{subtitle}</p>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-line bg-white p-7 shadow-[0_24px_70px_rgb(15_23_42/0.10)] sm:p-9">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-forest text-sm font-extrabold text-white shadow-md">
+            SF
+          </span>
+          <p className="text-lg font-bold tracking-[-0.03em] text-ink">StudyForge</p>
+        </div>
+        <h1 className="mt-8 text-3xl font-bold tracking-[-0.04em]">{title}</h1>
+        <p className="mt-2 mb-7 text-sm leading-6 text-muted">{subtitle}</p>
         {children}
       </div>
     </div>

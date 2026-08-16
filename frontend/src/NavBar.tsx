@@ -34,10 +34,13 @@ export function NavBar() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-forest-800 bg-forest text-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-        <Link to="/" className="shrink-0 font-serif text-xl text-white no-underline">
-          StudyForge
+    <header className="sticky top-0 z-20 border-b border-line/80 bg-white/90 text-ink shadow-[0_1px_12px_rgb(15_23_42/0.04)] backdrop-blur-xl">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+        <Link to="/" className="flex shrink-0 items-center gap-2.5 font-bold text-ink no-underline">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-forest text-sm font-extrabold text-white shadow-sm">
+            SF
+          </span>
+          <span className="text-lg tracking-[-0.03em]">StudyForge</span>
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {links.map((link) => (
@@ -45,8 +48,8 @@ export function NavBar() {
               key={link.to}
               to={link.to}
               end={link.to === "/"}
-              className={`rounded-md px-3 py-1.5 text-sm font-semibold no-underline ${
-                link.match(pathname) ? "bg-white/15 text-gold" : "text-white/80 hover:bg-white/10 hover:text-white"
+              className={`rounded-lg px-3 py-2 text-sm font-semibold no-underline transition ${
+                link.match(pathname) ? "bg-forest/10 text-forest" : "text-muted hover:bg-slate/10 hover:text-ink"
               }`}
             >
               {link.label}
@@ -54,11 +57,11 @@ export function NavBar() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <Link to="/profile" className="hidden text-sm text-white/80 no-underline hover:text-white sm:inline">
+          <Link to="/profile" className="hidden text-sm font-medium text-muted no-underline hover:text-ink sm:inline">
             {user?.name}
           </Link>
           <button
-            className="rounded-md bg-gold px-3 py-1.5 text-sm font-semibold text-forest"
+            className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-ink"
             onClick={async () => {
               await logout();
               navigate("/login");
@@ -68,7 +71,7 @@ export function NavBar() {
           </button>
           <button
             type="button"
-            className="rounded-md border border-white/30 px-3 py-1.5 text-sm font-semibold md:hidden"
+            className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold md:hidden"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
           >
@@ -77,15 +80,15 @@ export function NavBar() {
         </div>
       </div>
       {open ? (
-        <nav className="border-t border-white/10 px-4 py-3 md:hidden">
-          <div className="mx-auto flex max-w-5xl flex-col gap-1">
+        <nav className="border-t border-line bg-white px-4 py-3 md:hidden">
+          <div className="mx-auto flex max-w-6xl flex-col gap-1">
             {links.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 end={link.to === "/"}
-                className={`rounded-md px-3 py-2 text-sm font-semibold no-underline ${
-                  link.match(pathname) ? "bg-white/15 text-gold" : "text-white/80"
+                className={`rounded-lg px-3 py-2.5 text-sm font-semibold no-underline ${
+                  link.match(pathname) ? "bg-forest/10 text-forest" : "text-muted hover:bg-slate/10 hover:text-ink"
                 }`}
               >
                 {link.label}

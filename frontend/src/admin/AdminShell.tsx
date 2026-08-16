@@ -11,22 +11,22 @@ const TABS = [
 
 export function AdminShell() {
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Admin</p>
-        <h1 className="font-serif text-3xl">Activity console</h1>
-        <p className="text-muted">Monitor accounts, content, and every meaningful action across StudyForge.</p>
+    <div className="space-y-7">
+      <div className="rounded-2xl border border-line bg-white p-6">
+        <span className="inline-flex rounded-full bg-forest/10 px-2.5 py-1 text-xs font-bold text-forest">ADMIN</span>
+        <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">Activity console</h1>
+        <p className="mt-1 text-muted">Monitor accounts, content, and every meaningful action across StudyForge.</p>
       </div>
 
-      <nav className="flex flex-wrap gap-2 border-b border-line pb-3">
+      <nav className="flex flex-wrap gap-1 rounded-xl border border-line bg-white p-1.5">
         {TABS.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
             end={tab.end}
             className={({ isActive }) =>
-              `rounded-full px-3 py-1.5 text-sm font-semibold no-underline ${
-                isActive ? "bg-forest text-white" : "bg-white text-ink border border-line hover:border-forest/40"
+              `rounded-lg px-3 py-2 text-sm font-semibold no-underline transition ${
+                isActive ? "bg-forest text-white shadow-sm" : "text-muted hover:bg-slate/10 hover:text-ink"
               }`
             }
           >

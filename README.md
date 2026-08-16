@@ -2,6 +2,8 @@
 
 Upload lecture notes. Get study summaries and multiple-choice quizzes generated **from that file**, not from a generic question bank.
 
+**New here?** Read the [User Guide](USER_GUIDE.md) for sign-up, spaces, uploads, and quizzes.
+
 ## Local run
 
 You need Node.js 22+.

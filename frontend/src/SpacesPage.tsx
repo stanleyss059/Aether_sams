@@ -45,9 +45,9 @@ export function SpacesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Library</p>
-          <h1 className="font-serif text-3xl">Spaces</h1>
-          <p className="text-muted">Open a course deck to see its materials.</p>
+          <span className="inline-flex rounded-full bg-forest/10 px-2.5 py-1 text-xs font-bold text-forest">LIBRARY</span>
+          <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">Spaces</h1>
+          <p className="mt-1 text-muted">Open a course deck to see its materials.</p>
         </div>
         <button
           type="button"
@@ -127,26 +127,39 @@ export function SpacesPage() {
               <Link
                 key={space.id}
                 to={`/spaces/${space.id}`}
-                className="flex overflow-hidden rounded-2xl border border-line bg-white no-underline shadow-sm transition hover:border-forest/40"
+                className="group flex overflow-hidden rounded-2xl border border-line bg-white no-underline transition hover:-translate-y-0.5 hover:border-forest/30"
               >
                 <div className={`w-1.5 shrink-0 ${look.bar}`} />
-                <div className="flex min-w-0 flex-1 items-center justify-between gap-4 p-4 sm:p-5">
+                <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     {space.courseCode ? (
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${look.chip}`}>{space.courseCode}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${look.chip}`}>{space.courseCode}</span>
                     ) : null}
-                    <p className="mt-1 font-serif text-2xl text-ink">{space.title}</p>
+                    <p className="mt-2 truncate text-xl font-bold tracking-[-0.03em] text-ink">{space.title}</p>
                     {space.description ? <p className="mt-1 truncate text-sm text-muted">{space.description}</p> : null}
                   </div>
-                  <p className="shrink-0 text-sm text-muted">
-                    {space.documentCount} material{space.documentCount === 1 ? "" : "s"}
-                  </p>
+                  <div className="flex shrink-0 items-center gap-5">
+                    <SpaceStat value={space.documentCount} label={space.documentCount === 1 ? "material" : "materials"} />
+                    <SpaceStat value={space.quizCount} label={space.quizCount === 1 ? "quiz" : "quizzes"} />
+                    <span className="text-lg text-muted transition group-hover:translate-x-0.5 group-hover:text-forest">
+                      →
+                    </span>
+                  </div>
                 </div>
               </Link>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function SpaceStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="text-right">
+      <p className="text-lg font-bold tracking-[-0.03em] text-ink">{value}</p>
+      <p className="text-xs font-semibold text-muted">{label}</p>
     </div>
   );
 }

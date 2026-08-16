@@ -1,28 +1,133 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Source Serif 4", ui-serif, Georgia, serif;
-  --color-ink: #1c1917;
-  --color-forest: #1f4d3a;
-  --color-forest-800: #16382a;
-  --color-gold: #c4a35a;
-  --color-clay: #9c4a2a;
-  --color-slate: #3f4f5f;
-  --color-parchment: #f4efe4;
-  --color-muted: #6b6258;
-  --color-line: #ddd4c4;
-  --color-danger: #9b2335;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #172033;
+  --color-forest: #4f46e5;
+  --color-forest-800: #3730a3;
+  --color-gold: #0ea5e9;
+  --color-clay: #f97316;
+  --color-slate: #64748b;
+  --color-parchment: #f6f8fc;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-danger: #dc2626;
+}
+
+html {
+  background: var(--color-parchment);
 }
 
 body {
   margin: 0;
   color: var(--color-ink);
-  background: var(--color-parchment);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(79 70 229 / 0.06), transparent 28rem),
+    radial-gradient(circle at 94% 8%, rgb(14 165 233 / 0.05), transparent 24rem),
+    var(--color-parchment);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-gold);
+  outline: 3px solid rgb(79 70 229 / 0.35);
   outline-offset: 2px;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  .font-serif {
+    letter-spacing: -0.025em;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input,
+  textarea,
+  select {
+    min-height: 42px;
+    background-color: white;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  input:hover:not(:disabled),
+  textarea:hover:not(:disabled),
+  select:hover:not(:disabled) {
+    border-color: #cbd5e1;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: rgb(79 70 229 / 0.65);
+    box-shadow: 0 0 0 3px rgb(79 70 229 / 0.1);
+    outline: none;
+  }
+
+  button:where([class*="rounded-md"], [class*="rounded-lg"], [class*="rounded-full"]) {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.08),
+      0 3px 8px rgb(15 23 42 / 0.07);
+    transition:
+      box-shadow 0.15s ease,
+      transform 0.15s ease,
+      filter 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  button:where([class*="rounded-md"], [class*="rounded-lg"], [class*="rounded-full"]):hover:not(:disabled) {
+    box-shadow:
+      0 2px 4px rgb(15 23 42 / 0.1),
+      0 8px 18px rgb(15 23 42 / 0.1);
+    transform: translateY(-1px);
+  }
+
+  button:where([class*="rounded-md"], [class*="rounded-lg"], [class*="rounded-full"]):active:not(:disabled) {
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+    transform: translateY(0);
+  }
+
+  button:where([class*="rounded-md"], [class*="rounded-lg"], [class*="rounded-full"]):disabled {
+    box-shadow: none;
+    transform: none;
+  }
+
+  a:where([class*="rounded-md"], [class*="rounded-lg"]):where([class*="bg-forest"], [class*="border-forest"], [class*="border-line"]) {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.08),
+      0 3px 8px rgb(15 23 42 / 0.07);
+    transition:
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  a:where([class*="rounded-md"], [class*="rounded-lg"]):where([class*="bg-forest"], [class*="border-forest"], [class*="border-line"]):hover {
+    box-shadow:
+      0 2px 4px rgb(15 23 42 / 0.1),
+      0 8px 18px rgb(15 23 42 / 0.1);
+    transform: translateY(-1px);
+  }
+
+  :where(div, section, article, form, a)[class*="bg-white"][class*="border-line"][class*="rounded"] {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.03),
+      0 8px 24px rgb(15 23 42 / 0.035);
+  }
+
+  :where(a, button)[class*="bg-forest"]:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
 }
