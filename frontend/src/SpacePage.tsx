@@ -16,6 +16,7 @@ export function SpacePage() {
   const [space, setSpace] = useState<SpaceDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingDelete | null>(null);
 
   async function load() {
@@ -46,6 +47,21 @@ export function SpacePage() {
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function generateQuiz(docId: string) {
+    setGeneratingId(docId);
+    setError("");
+    try {
+      const data = await api<{ quizId: string }>(`/api/documents/${docId}/generate`, {
+        method: "POST",
+        body: JSON.stringify({ count: 50 }),
+      });
+      navigate(`/quizzes/${data.quizId}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not generate a quiz from that upload.");
+      setGeneratingId(null);
     }
   }
 
@@ -151,20 +167,42 @@ export function SpacePage() {
                 key={doc.id}
                 className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 transition hover:border-forest/40 sm:flex-row sm:items-center sm:justify-between"
               >
-                <Link to={`/documents/${doc.id}`} className="min-w-0 no-underline">
+                <Link to={`/documents/${doc.id}`} className="min-w-0 flex-1 no-underline">
                   <p className="font-serif text-xl text-ink">{doc.title}</p>
                   <p className="text-sm text-muted">
                     {doc.filename} · {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
                   </p>
                 </Link>
-                <button
-                  type="button"
-                  className="shrink-0 rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger disabled:opacity-60"
-                  disabled={busy}
-                  onClick={() => setPending({ kind: "document", id: doc.id, title: doc.title })}
-                >
-                  Remove
-                </button>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {doc.latestQuizId ? (
+                    <Link
+                      to={`/quizzes/${doc.latestQuizId}`}
+                      className="rounded-md bg-forest px-3 py-2 text-sm font-semibold text-white no-underline"
+                    >
+                      Attempt quiz
+                    </Link>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="rounded-md border border-forest px-3 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
+                    disabled={busy || generatingId !== null}
+                    onClick={() => generateQuiz(doc.id)}
+                  >
+                    {generatingId === doc.id
+                      ? "Generating…"
+                      : doc.latestQuizId
+                        ? "New quiz"
+                        : "Generate quiz"}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger disabled:opacity-60"
+                    disabled={busy || generatingId !== null}
+                    onClick={() => setPending({ kind: "document", id: doc.id, title: doc.title })}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>

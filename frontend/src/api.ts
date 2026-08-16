@@ -56,6 +56,7 @@ export type SpaceDoc = {
   filename: string;
   summary?: string;
   quizCount: number;
+  latestQuizId?: string | null;
   createdAt: string;
 };
 export type SpaceDetail = SpaceSummary & { documents: SpaceDoc[] };

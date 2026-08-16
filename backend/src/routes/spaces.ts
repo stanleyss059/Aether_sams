@@ -57,7 +57,13 @@ spacesRouter.get(
     const space = await prisma.space.findFirst({
       where: { id: req.params.id, userId: req.user!.id },
       include: {
-        documents: { orderBy: { createdAt: "desc" }, include: { _count: { select: { quizzes: true } } } },
+        documents: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            _count: { select: { quizzes: true } },
+            quizzes: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true } },
+          },
+        },
       },
     });
     if (!space) throw Errors.notFound("Space not found.");
@@ -70,6 +76,7 @@ spacesRouter.get(
           filename: document.filename,
           summary: document.summary,
           quizCount: document._count.quizzes,
+          latestQuizId: document.quizzes[0]?.id ?? null,
           createdAt: document.createdAt,
         })),
       }),
