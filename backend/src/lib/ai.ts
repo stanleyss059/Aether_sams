@@ -1,45 +1,54 @@
 import { config } from "../config.js";
 import { Errors } from "./errors.js";
+import { z } from "zod";
 
-type Generated = {
-  summary: string;
-  questions: Array<{
-    question: string;
-    options: string[];
-    correctIndex: number;
-    explanation: string;
-  }>;
-};
+const generatedSchema = z.object({
+  summary: z.string().trim().min(1).max(4_000),
+  questions: z
+    .array(
+      z.object({
+        question: z.string().trim().min(1).max(1_000),
+        options: z.array(z.string().trim().min(1).max(500)).length(4),
+        correctIndex: z.number().int().min(0).max(3),
+        explanation: z.string().trim().min(1).max(2_000),
+      }),
+    )
+    .min(3),
+});
+type Generated = z.infer<typeof generatedSchema>;
 
 export async function generateQuizFromText(title: string, text: string, count = 50): Promise<Generated> {
   if (!config.openaiKey) {
     throw Errors.validation(
-      "Add your OPENAI_API_KEY to backend/.env, then restart the API. StudyForge uses that key to generate quizzes from your uploads.",
+      "Add OPENAI_API_KEY in your environment (Vercel → Settings → Environment Variables, or backend/.env locally), then redeploy or restart.",
     );
   }
 
   const material = text.slice(0, 14000);
-  const response = await fetch(`${config.openaiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.openaiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": config.frontendUrl,
-      "X-Title": "StudyForge",
-    },
-    body: JSON.stringify({
-      model: config.openaiModel,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a university tutor. Create study notes and multiple-choice questions using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
-        },
-        {
-          role: "user",
-          content: `Document title: ${title}
+  let response: Response;
+  try {
+    response = await fetch(`${config.openaiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      signal: AbortSignal.timeout(config.aiTimeoutMs),
+      headers: {
+        Authorization: `Bearer ${config.openaiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": config.frontendUrl,
+        "X-Title": "StudyForge",
+      },
+      body: JSON.stringify({
+        model: config.openaiModel,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a university tutor. Create study notes and multiple-choice questions using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
+          },
+          {
+            role: "user",
+            content: `Document title: ${title}
 
 Material:
 ${material}
@@ -58,39 +67,43 @@ Return JSON with this shape:
 }
 
 Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3.`,
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    console.error(detail);
-    throw Errors.validation("The AI provider rejected the request. Check OPENAI_API_KEY, model, and billing.");
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw Errors.serviceUnavailable("Quiz generation timed out. Try again with a shorter document.", "AI_TIMEOUT");
+    }
+    throw Errors.serviceUnavailable("The AI provider could not be reached. Try again shortly.", "AI_UNAVAILABLE");
   }
 
-  const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const raw = payload.choices?.[0]?.message?.content;
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error(`AI provider error ${response.status}: ${detail.slice(0, 500)}`);
+    if (response.status === 401 || response.status === 403) {
+      throw Errors.serviceUnavailable("The AI provider credentials are invalid.", "AI_AUTH");
+    }
+    if (response.status === 429) {
+      throw Errors.serviceUnavailable("The AI provider is rate limited. Try again shortly.", "AI_RATE_LIMIT");
+    }
+    throw Errors.serviceUnavailable("The AI provider rejected the request. Try again shortly.", "AI_PROVIDER");
+  }
+
+  const payload = z
+    .object({ choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1) })
+    .safeParse(await response.json());
+  const raw = payload.success ? payload.data.choices[0]?.message.content : undefined;
   if (!raw) throw Errors.validation("The AI returned an empty response. Try a shorter document.");
 
-  let parsed: Generated;
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw) as Generated;
+    parsed = JSON.parse(raw);
   } catch {
     throw Errors.validation("The AI returned invalid JSON. Try generating again.");
   }
 
-  const questions = (parsed.questions ?? []).filter(
-    (q) => q.question && Array.isArray(q.options) && q.options.length === 4 && q.correctIndex >= 0 && q.correctIndex <= 3,
-  );
-  if (questions.length < 3) {
-    throw Errors.validation("Not enough usable questions were generated. Try a longer or clearer document.");
-  }
-
-  return {
-    summary: parsed.summary?.trim() || "No summary returned.",
-    questions,
-  };
+  const generated = generatedSchema.safeParse(parsed);
+  if (!generated.success) throw Errors.validation("The AI returned an invalid quiz. Try generating again.");
+  return generated.data satisfies Generated;
 }

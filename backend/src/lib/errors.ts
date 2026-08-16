@@ -15,4 +15,5 @@ export const Errors = {
   notFound: (message = "Not found.") => new AppError(404, message, "NOT_FOUND"),
   validation: (message: string) => new AppError(400, message, "VALIDATION"),
   conflict: (message: string) => new AppError(409, message, "CONFLICT"),
+  serviceUnavailable: (message: string, code = "UPSTREAM") => new AppError(503, message, code),
 };

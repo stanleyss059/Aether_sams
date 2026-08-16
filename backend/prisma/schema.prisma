@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -79,6 +80,9 @@ model Quiz {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions Question[]
   attempts  Attempt[]
+
+  @@index([userId])
+  @@index([documentId])
 }
 
 model Question {
@@ -91,6 +95,8 @@ model Question {
   sortOrder    Int    @default(0)
 
   quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
 }
 
 model Attempt {
@@ -104,4 +110,7 @@ model Attempt {
 
   quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@index([userId])
 }

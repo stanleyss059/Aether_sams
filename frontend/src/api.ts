@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 export class ApiError extends Error {
   code: string;
   status: number;
@@ -15,6 +17,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const headers = new Headers(options.headers);
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (!isForm && options.body) headers.set("Content-Type", "application/json");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(path, { ...options, credentials: "include", headers });
   const text = await res.text();
   let json: Ok<T> | Fail | null = null;
@@ -65,6 +70,7 @@ export type DocListItem = {
   summary: string;
   createdAt: string;
   quizCount: number;
+  latestQuizId: string | null;
   spaceId?: string | null;
   space?: { id: string; title: string; courseCode: string } | null;
 };

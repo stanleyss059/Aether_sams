@@ -11,15 +11,12 @@ export async function hashPassword(password: string) {
 
 export async function verifyPassword(hash: string, password: string) {
   try {
-    if (hash.startsWith("scrypt:")) {
-      const parts = hash.split(":");
-      const salt = Buffer.from(parts[1] ?? "", "hex");
-      const expected = Buffer.from(parts[2] ?? "", "hex");
-      const key = (await scrypt(password, salt, 64)) as Buffer;
-      return expected.length === key.length && timingSafeEqual(expected, key);
-    }
-    const argon2 = (await import("argon2")).default;
-    return await argon2.verify(hash, password);
+    if (!hash.startsWith("scrypt:")) return false;
+    const parts = hash.split(":");
+    const salt = Buffer.from(parts[1] ?? "", "hex");
+    const expected = Buffer.from(parts[2] ?? "", "hex");
+    const key = (await scrypt(password, salt, 64)) as Buffer;
+    return expected.length === key.length && timingSafeEqual(expected, key);
   } catch {
     return false;
   }

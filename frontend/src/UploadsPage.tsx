@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type DocListItem } from "./api";
+import { api, ApiError, type DocListItem } from "./api";
+import { ConfirmModal } from "./ConfirmModal";
 
 export function UploadsPage() {
   const [docs, setDocs] = useState<DocListItem[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [pending, setPending] = useState<DocListItem | null>(null);
 
   useEffect(() => {
     api<DocListItem[]>("/api/documents")
@@ -13,6 +16,22 @@ export function UploadsPage() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  async function confirmRemove() {
+    if (!pending) return;
+    const doc = pending;
+    setBusyId(doc.id);
+    setError("");
+    try {
+      await api(`/api/documents/${doc.id}`, { method: "DELETE" });
+      setDocs((current) => current.filter((item) => item.id !== doc.id));
+      setPending(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not delete that upload.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -30,17 +49,50 @@ export function UploadsPage() {
       ) : (
         <div className="grid gap-3">
           {docs.map((doc) => (
-            <Link key={doc.id} to={`/documents/${doc.id}`} className="rounded-2xl border border-line bg-white p-4 no-underline shadow-sm">
-              <p className="font-serif text-xl text-ink">{doc.title}</p>
-              <p className="text-sm text-muted">
-                {doc.filename}
-                {doc.space ? ` · ${doc.space.courseCode ? `${doc.space.courseCode} · ` : ""}${doc.space.title}` : " · Unfiled"}
-                {` · ${doc.quizCount} quiz${doc.quizCount === 1 ? "" : "zes"}`}
-              </p>
-            </Link>
+            <div
+              key={doc.id}
+              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            >
+              <Link to={`/documents/${doc.id}`} className="min-w-0 no-underline">
+                <p className="font-serif text-xl text-ink">{doc.title}</p>
+                <p className="text-sm text-muted">
+                  {doc.filename}
+                  {doc.space ? ` · ${doc.space.courseCode ? `${doc.space.courseCode} · ` : ""}${doc.space.title}` : " · Unfiled"}
+                  {` · ${doc.quizCount} quiz${doc.quizCount === 1 ? "" : "zes"}`}
+                </p>
+              </Link>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <Link
+                  to={doc.latestQuizId ? `/quizzes/${doc.latestQuizId}` : `/documents/${doc.id}`}
+                  className="rounded-lg bg-forest px-4 py-2 text-center text-sm font-semibold text-white no-underline"
+                >
+                  {doc.latestQuizId ? "Attempt quiz" : "Generate quiz"}
+                </Link>
+                <button
+                  type="button"
+                  className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-semibold text-danger disabled:opacity-60"
+                  disabled={busyId === doc.id}
+                  onClick={() => setPending(doc)}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={Boolean(pending)}
+        title={`Delete “${pending?.title ?? ""}”?`}
+        description="This permanently removes the upload and any quizzes generated from it."
+        confirmLabel="Delete upload"
+        busy={Boolean(pending && busyId === pending.id)}
+        onCancel={() => {
+          if (!busyId) setPending(null);
+        }}
+        onConfirm={confirmRemove}
+      />
     </div>
   );
 }

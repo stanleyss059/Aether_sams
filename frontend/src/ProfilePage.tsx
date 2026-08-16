@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError, type User } from "./api";
 import { useAuth } from "./AuthContext";
+import { supabase } from "./supabase";
 
 export function ProfilePage() {
   const { user, applyUser, logout } = useAuth();
@@ -19,6 +20,8 @@ export function ProfilePage() {
     setError("");
     setMessage("");
     try {
+      const { error: metaError } = await supabase.auth.updateUser({ data: { name } });
+      if (metaError) throw new Error(metaError.message);
       const data = await api<{ user: User }>("/api/auth/me", {
         method: "PATCH",
         body: JSON.stringify({ name }),
@@ -26,7 +29,7 @@ export function ProfilePage() {
       applyUser(data.user);
       setMessage("Name updated.");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not update your profile.");
+      setError(err instanceof ApiError || err instanceof Error ? err.message : "Could not update your profile.");
     } finally {
       setBusy(false);
     }
@@ -38,15 +41,19 @@ export function ProfilePage() {
     setError("");
     setMessage("");
     try {
-      await api("/api/auth/me", {
-        method: "PATCH",
-        body: JSON.stringify({ currentPassword, newPassword }),
+      if (!user?.email) throw new Error("Not signed in.");
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
       });
+      if (verifyError) throw new Error("Current password is incorrect.");
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw new Error(updateError.message);
       setCurrentPassword("");
       setNewPassword("");
       setMessage("Password updated.");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not update your password.");
+      setError(err instanceof Error ? err.message : "Could not update your password.");
     } finally {
       setBusy(false);
     }

@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes, Link, useNavigate, useParams } from "r
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { api, ApiError, type DocDetail } from "./api";
+import { ConfirmModal } from "./ConfirmModal";
 import { DashboardPage } from "./DashboardPage";
 import { NavBar } from "./NavBar";
 import { ProfilePage } from "./ProfilePage";
@@ -31,8 +32,8 @@ function Shell() {
 function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("student@studyforge.app");
-  const [password, setPassword] = useState("StudyForge2026!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -44,7 +45,7 @@ function LoginPage() {
       await login(email, password);
       navigate("/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to sign in.");
+      setError(err instanceof Error ? err.message : "Unable to sign in.");
     } finally {
       setBusy(false);
     }
@@ -80,17 +81,23 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setInfo("");
     try {
-      await register(name, email, password);
+      const result = await register(name, email, password);
+      if (result.needsEmailConfirmation) {
+        setInfo("Account created. Check your email to confirm, then sign in.");
+        return;
+      }
       navigate("/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to register.");
+      setError(err instanceof Error ? err.message : "Unable to register.");
     } finally {
       setBusy(false);
     }
@@ -100,6 +107,7 @@ function RegisterPage() {
     <AuthCard title="Create account" subtitle="Your uploads stay private to your account.">
       <form className="space-y-4" onSubmit={onSubmit}>
         {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
+        {info ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{info}</p> : null}
         <label className="block text-sm font-semibold">
           Name
           <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" required value={name} onChange={(e) => setName(e.target.value)} />
@@ -142,6 +150,7 @@ function DocumentPage() {
   const [doc, setDoc] = useState<DocDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function load() {
     if (!id) return;
@@ -169,6 +178,20 @@ function DocumentPage() {
     }
   }
 
+  async function removeDoc() {
+    if (!id || !doc) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/documents/${id}`, { method: "DELETE" });
+      navigate(doc.space ? `/spaces/${doc.space.id}` : "/uploads");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not delete that upload.");
+      setBusy(false);
+      setConfirmOpen(false);
+    }
+  }
+
   if (!doc && !error) return <p>Loading…</p>;
   if (!doc) return <p className="text-danger">{error}</p>;
 
@@ -189,9 +212,31 @@ function DocumentPage() {
       </p>
       <h1 className="font-serif text-3xl">{doc.title}</h1>
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
-      <button className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy} onClick={generate}>
-        {busy ? "Generating from your upload…" : "Generate 50 MCQs from this file"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
+          disabled={busy}
+          onClick={generate}
+        >
+          {busy ? "Generating from your upload…" : "Generate 50 MCQs from this file"}
+        </button>
+        {doc.quizzes[0] ? (
+          <Link
+            to={`/quizzes/${doc.quizzes[0].id}`}
+            className="rounded-md border border-forest px-4 py-2.5 font-semibold text-forest no-underline hover:bg-forest/5"
+          >
+            Attempt quiz
+          </Link>
+        ) : null}
+        <button
+          type="button"
+          className="rounded-md border border-danger/30 px-4 py-2.5 font-semibold text-danger disabled:opacity-60"
+          disabled={busy}
+          onClick={() => setConfirmOpen(true)}
+        >
+          Remove upload
+        </button>
+      </div>
       {doc.summary ? (
         <section className="rounded-xl border border-line bg-white p-5">
           <h2 className="font-serif text-xl">Study notes</h2>
@@ -205,13 +250,37 @@ function DocumentPage() {
       <section>
         <h2 className="font-serif text-xl">Quizzes</h2>
         <div className="mt-3 grid gap-2">
-          {doc.quizzes.map((quiz) => (
-            <Link key={quiz.id} to={`/quizzes/${quiz.id}`} className="rounded-lg border border-line bg-white px-4 py-3 no-underline">
-              {quiz.title} · {quiz.questionCount} questions
+          {doc.quizzes.map((quiz, index) => (
+            <Link
+              key={quiz.id}
+              to={`/quizzes/${quiz.id}`}
+              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3 no-underline"
+            >
+              <span>
+                {quiz.title} · {quiz.questionCount} questions
+                {quiz.attemptCount > 0
+                  ? ` · ${quiz.attemptCount} attempt${quiz.attemptCount === 1 ? "" : "s"}`
+                  : ""}
+              </span>
+              <span className="shrink-0 font-semibold text-forest">
+                {index === 0 ? "Attempt quiz" : "Open quiz"} →
+              </span>
             </Link>
           ))}
         </div>
       </section>
+
+      <ConfirmModal
+        open={confirmOpen}
+        title={`Delete “${doc.title}”?`}
+        description="This permanently removes the upload and any quizzes generated from it."
+        confirmLabel="Delete upload"
+        busy={busy && confirmOpen}
+        onCancel={() => {
+          if (!busy) setConfirmOpen(false);
+        }}
+        onConfirm={removeDoc}
+      />
     </div>
   );
 }

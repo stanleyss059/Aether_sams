@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type SpaceDetail } from "./api";
+import { ConfirmModal } from "./ConfirmModal";
+import { prepareUpload } from "./prepareUpload";
+
+type PendingDelete =
+  | { kind: "space" }
+  | { kind: "document"; id: string; title: string };
 
 export function SpacePage() {
   const { id } = useParams();
@@ -10,6 +16,7 @@ export function SpacePage() {
   const [space, setSpace] = useState<SpaceDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<PendingDelete | null>(null);
 
   async function load() {
     if (!id) return;
@@ -24,30 +31,46 @@ export function SpacePage() {
     if (!file || !id) return;
     setBusy(true);
     setError("");
-    const body = new FormData();
-    body.append("file", file);
-    body.append("spaceId", id);
     try {
+      const prepared = await prepareUpload(file);
+      const body = new FormData();
+      body.append("file", prepared.file, prepared.file.name);
+      body.append("spaceId", id);
+      body.append("title", file.name.replace(/\.[^.]+$/, "") || file.name);
+      if (prepared.compressed) body.append("compressed", "gzip");
+      if (prepared.reducedToText) body.append("displayFilename", file.name);
       await api("/api/documents", { method: "POST", body });
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Upload failed.");
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
 
-  async function removeSpace() {
-    if (!id || !space) return;
-    const ok = window.confirm(`Remove “${space.title}”? Materials stay in My uploads.`);
-    if (!ok) return;
+  async function confirmPending() {
+    if (!pending || !id || !space) return;
     setBusy(true);
+    setError("");
     try {
-      await api(`/api/spaces/${id}`, { method: "DELETE" });
-      navigate("/spaces");
+      if (pending.kind === "space") {
+        await api(`/api/spaces/${id}`, { method: "DELETE" });
+        navigate("/spaces");
+        return;
+      }
+      await api(`/api/documents/${pending.id}`, { method: "DELETE" });
+      setPending(null);
+      await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not delete this space.");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : pending.kind === "space"
+            ? "Could not delete this space."
+            : "Could not delete that upload.",
+      );
+    } finally {
       setBusy(false);
     }
   }
@@ -56,6 +79,16 @@ export function SpacePage() {
   if (!space) return <p className="text-danger">{error}</p>;
 
   const look = ACCENTS[accentOf(space.accent)];
+  const modalTitle =
+    pending?.kind === "space"
+      ? `Delete “${space.title}”?`
+      : pending?.kind === "document"
+        ? `Delete “${pending.title}”?`
+        : "";
+  const modalDescription =
+    pending?.kind === "space"
+      ? "The space will be removed. Your uploaded materials stay in My uploads."
+      : "This permanently removes the upload and any quizzes generated from it.";
 
   return (
     <div className="space-y-6">
@@ -90,12 +123,12 @@ export function SpacePage() {
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            {busy ? "Uploading…" : "Upload"}
+            {busy ? "Preparing upload…" : "Upload"}
           </button>
           <button
             type="button"
             className="rounded-md border border-danger/30 px-3 py-2.5 text-sm font-semibold text-danger"
-            onClick={removeSpace}
+            onClick={() => setPending({ kind: "space" })}
             disabled={busy}
           >
             Delete
@@ -114,20 +147,41 @@ export function SpacePage() {
         ) : (
           <div className="mt-3 grid gap-3">
             {space.documents.map((doc) => (
-              <Link
+              <div
                 key={doc.id}
-                to={`/documents/${doc.id}`}
-                className="rounded-xl border border-line bg-white p-4 no-underline transition hover:border-forest/40"
+                className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 transition hover:border-forest/40 sm:flex-row sm:items-center sm:justify-between"
               >
-                <p className="font-serif text-xl text-ink">{doc.title}</p>
-                <p className="text-sm text-muted">
-                  {doc.filename} · {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
-                </p>
-              </Link>
+                <Link to={`/documents/${doc.id}`} className="min-w-0 no-underline">
+                  <p className="font-serif text-xl text-ink">{doc.title}</p>
+                  <p className="text-sm text-muted">
+                    {doc.filename} · {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
+                  </p>
+                </Link>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger disabled:opacity-60"
+                  disabled={busy}
+                  onClick={() => setPending({ kind: "document", id: doc.id, title: doc.title })}
+                >
+                  Remove
+                </button>
+              </div>
             ))}
           </div>
         )}
       </section>
+
+      <ConfirmModal
+        open={Boolean(pending)}
+        title={modalTitle}
+        description={modalDescription}
+        confirmLabel={pending?.kind === "space" ? "Delete space" : "Delete upload"}
+        busy={busy && Boolean(pending)}
+        onCancel={() => {
+          if (!busy) setPending(null);
+        }}
+        onConfirm={confirmPending}
+      />
     </div>
   );
 }
