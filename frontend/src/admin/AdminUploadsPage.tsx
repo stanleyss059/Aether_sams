@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type AdminDocument, type Paginated } from "../api";
 import { ConfirmModal } from "../ConfirmModal";
-import { FileBadge } from "../FileBadge";
+import { FileBadge, SaveDocumentButton } from "../FileBadge";
 import {
   Chip,
   EmptyState,
@@ -116,7 +116,13 @@ export function AdminUploadsPage() {
                     <p className="mt-1.5 truncate text-xs text-muted">{doc.owner.email}</p>
                   </div>
                 </div>
-                <div className="shrink-0 sm:text-right">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                  <SaveDocumentButton
+                    documentId={doc.id}
+                    filename={doc.filename}
+                    admin
+                    className="rounded-lg border border-forest/40 px-3.5 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
+                  />
                   <RowButton tone="danger" disabled={busyId === doc.id} onClick={() => setPending(doc)}>
                     Delete
                   </RowButton>

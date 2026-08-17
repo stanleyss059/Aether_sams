@@ -8,6 +8,7 @@ import { Errors } from "../lib/errors.js";
 import { logAudit, writeAudit } from "../lib/audit.js";
 import { extractText } from "../lib/extract.js";
 import { generateQuizFromText } from "../lib/ai.js";
+import { attachmentFilename, textDownloadFilename } from "../lib/download.js";
 import { ownedDocument, ownedSpace } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
@@ -220,6 +221,17 @@ documentsRouter.post(
       },
     });
     res.status(201).json({ success: true, data: { recorded: true } });
+  }),
+);
+
+documentsRouter.get(
+  "/documents/:id/download",
+  asyncHandler(async (req, res) => {
+    const document = await ownedDocument(req.user!.id, req.params.id);
+    const filename = textDownloadFilename(document.filename);
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", attachmentFilename(filename));
+    res.send(document.extractedText);
   }),
 );
 

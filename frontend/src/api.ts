@@ -47,6 +47,60 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   return json.data;
 }
 
+function filenameFromDisposition(header: string | null) {
+  if (!header) return null;
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      return star[1].trim();
+    }
+  }
+  const plain = /filename="([^"]+)"/i.exec(header);
+  return plain ? plain[1] : null;
+}
+
+export async function downloadDocument(
+  id: string,
+  fallbackFilename: string,
+  options: { admin?: boolean } = {},
+) {
+  const path = options.admin ? `/api/admin/documents/${id}/download` : `/api/documents/${id}/download`;
+  const headers = new Headers();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(path, { credentials: "include", headers });
+  } catch {
+    throw new ApiError(
+      "Could not reach the server. Check your connection and try again.",
+      "NETWORK",
+      0,
+    );
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text) as Fail;
+      if (!json.success) throw new ApiError(json.error.message, json.error.code, res.status);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+    }
+    throw new ApiError("Could not download that file.", "HTTP", res.status);
+  }
+  const blob = await res.blob();
+  const name = filenameFromDisposition(res.headers.get("Content-Disposition")) ?? fallbackFilename;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export type UserRole = "USER" | "ADMIN";
 export type User = {
   id: string;

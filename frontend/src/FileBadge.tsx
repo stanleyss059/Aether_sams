@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { ApiError, downloadDocument } from "./api";
+
 const STYLES: Record<string, string> = {
   pdf: "bg-danger/10 text-danger",
   docx: "bg-forest/10 text-forest",
@@ -21,5 +24,37 @@ export function FileBadge({ filename, className = "" }: { filename: string; clas
     >
       {extension.slice(0, 4)}
     </span>
+  );
+}
+
+export function SaveDocumentButton({
+  documentId,
+  filename,
+  admin = false,
+  className = "rounded-lg border border-forest/40 px-4 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60",
+}: {
+  documentId: string;
+  filename: string;
+  admin?: boolean;
+  className?: string;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function onDownload() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await downloadDocument(documentId, filename, { admin });
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : "Download failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button type="button" className={className} disabled={busy} onClick={onDownload}>
+      {busy ? "Saving…" : "Save"}
+    </button>
   );
 }

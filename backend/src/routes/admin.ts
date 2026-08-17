@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { writeAudit } from "../lib/audit.js";
+import { attachmentFilename, textDownloadFilename } from "../lib/download.js";
 import { asyncHandler, auditFailures, requireAuth, requireAdmin } from "../middleware/errorHandler.js";
 
 export const adminRouter = Router();
@@ -233,6 +234,18 @@ adminRouter.get(
         ...pagination(page, pageSize, total),
       },
     });
+  }),
+);
+
+adminRouter.get(
+  "/documents/:id/download",
+  asyncHandler(async (req, res) => {
+    const document = await prisma.document.findUnique({ where: { id: req.params.id } });
+    if (!document) throw Errors.notFound("Document not found.");
+    const filename = textDownloadFilename(document.filename);
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", attachmentFilename(filename));
+    res.send(document.extractedText);
   }),
 );
 

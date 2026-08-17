@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
-import { FileBadge } from "./FileBadge";
+import { FileBadge, SaveDocumentButton } from "./FileBadge";
 
 type PendingDelete =
   | { kind: "space" }
@@ -336,6 +336,7 @@ export function SpacePage() {
                         ? "New quiz"
                         : "Generate quiz"}
                   </button>
+                  <SaveDocumentButton documentId={doc.id} filename={doc.filename} />
                   <button
                     type="button"
                     className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-semibold text-danger disabled:opacity-60"

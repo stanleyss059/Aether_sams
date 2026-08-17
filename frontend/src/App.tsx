@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { api, ApiError, type DocDetail } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
+import { SaveDocumentButton } from "./FileBadge";
 import { DashboardPage } from "./DashboardPage";
 import { NavBar } from "./NavBar";
 import { OnboardingGuide } from "./OnboardingGuide";
@@ -267,6 +268,11 @@ function DocumentPage() {
         >
           {busy ? "Generating from your upload…" : "Generate 50 MCQs from this file"}
         </button>
+        <SaveDocumentButton
+          documentId={doc.id}
+          filename={doc.filename}
+          className="rounded-md border border-forest px-4 py-2.5 font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
+        />
         {doc.quizzes[0] ? (
           <Link
             to={`/quizzes/${doc.quizzes[0].id}`}

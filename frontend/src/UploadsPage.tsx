@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError, type DocListItem } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
-import { FileBadge } from "./FileBadge";
+import { FileBadge, SaveDocumentButton } from "./FileBadge";
 
 export function UploadsPage() {
   const [docs, setDocs] = useState<DocListItem[]>([]);
@@ -80,6 +80,7 @@ export function UploadsPage() {
                 >
                   {doc.latestQuizId ? "Attempt quiz" : "Generate quiz"}
                 </Link>
+                <SaveDocumentButton documentId={doc.id} filename={doc.filename} />
                 <button
                   type="button"
                   className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-semibold text-danger disabled:opacity-60"
