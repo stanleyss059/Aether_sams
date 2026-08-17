@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { writeAudit } from "../lib/audit.js";
-import { asyncHandler, requireAuth, requireAdmin } from "../middleware/errorHandler.js";
+import { asyncHandler, auditFailures, requireAuth, requireAdmin } from "../middleware/errorHandler.js";
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireAdmin);
@@ -104,6 +104,7 @@ adminRouter.get(
 
 adminRouter.post(
   "/users/:id/suspend",
+  auditFailures("admin.user.suspend", "user", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) throw Errors.notFound("User not found.");
@@ -133,6 +134,7 @@ adminRouter.post(
 
 adminRouter.post(
   "/users/:id/reactivate",
+  auditFailures("admin.user.reactivate", "user", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) throw Errors.notFound("User not found.");
@@ -160,6 +162,7 @@ adminRouter.post(
 
 adminRouter.delete(
   "/users/:id",
+  auditFailures("admin.user.delete", "user", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) throw Errors.notFound("User not found.");
@@ -235,6 +238,7 @@ adminRouter.get(
 
 adminRouter.delete(
   "/documents/:id",
+  auditFailures("admin.document.delete", "document", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
     const document = await prisma.document.findUnique({
       where: { id: req.params.id },
@@ -317,6 +321,7 @@ adminRouter.get(
 
 adminRouter.delete(
   "/spaces/:id",
+  auditFailures("admin.space.delete", "space", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
     const space = await prisma.space.findUnique({
       where: { id: req.params.id },

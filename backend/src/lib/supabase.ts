@@ -26,6 +26,7 @@ export type AppUser = {
   email: string;
   role: UserRole;
   suspendedAt: string | null;
+  createdAt: string;
 };
 
 function displayName(user: SupabaseUser) {
@@ -40,6 +41,7 @@ function toAppUser(user: {
   email: string;
   role: UserRole;
   suspendedAt: Date | null;
+  createdAt: Date;
 }): AppUser {
   return {
     id: user.id,
@@ -47,6 +49,7 @@ function toAppUser(user: {
     email: user.email,
     role: user.role,
     suspendedAt: user.suspendedAt ? user.suspendedAt.toISOString() : null,
+    createdAt: user.createdAt.toISOString(),
   };
 }
 

@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type AdminDocument, type Paginated } from "../api";
 import { ConfirmModal } from "../ConfirmModal";
+import { FileBadge } from "../FileBadge";
+import {
+  Chip,
+  EmptyState,
+  ErrorNote,
+  FilterBar,
+  FilterInput,
+  LoadingRows,
+  Pager,
+  Pill,
+  ResultCount,
+  RowButton,
+  RowCard,
+} from "./AdminUI";
 
 export function AdminUploadsPage() {
   const [q, setQ] = useState("");
@@ -50,84 +64,71 @@ export function AdminUploadsPage() {
 
   return (
     <div className="space-y-4">
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setSearch(q.trim());
         }}
       >
-        <input
-          className="min-w-[220px] flex-1 rounded-md border border-line px-3 py-2.5"
+        <FilterInput
           placeholder="Search title, filename, or owner"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <button type="submit" className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white">
-          Search
-        </button>
-      </form>
+      </FilterBar>
 
-      {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
-      {loading ? <p className="text-muted">Loading uploads…</p> : null}
+      {error ? <ErrorNote message={error} /> : null}
+
+      {loading ? <LoadingRows /> : null}
 
       {!loading && data && data.items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
-          No uploads matched that search.
-        </p>
+        <EmptyState
+          title="No uploads found"
+          description="No material matched that search. Try a filename, title, or owner email."
+        />
       ) : null}
 
-      <div className="grid gap-3">
-        {data?.items.map((doc) => (
-          <div
-            key={doc.id}
-            className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              <p className="font-serif text-xl text-ink">{doc.title}</p>
-              <p className="text-sm text-muted">
-                {doc.filename} · {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                Owner: {doc.owner.name} ({doc.owner.email})
-                {doc.space ? ` · Space: ${doc.space.courseCode || doc.space.title}` : " · Unfiled"}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="shrink-0 rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger disabled:opacity-60"
-              disabled={busyId === doc.id}
-              onClick={() => setPending(doc)}
-            >
-              Delete
-            </button>
+      {!loading && data && data.items.length > 0 ? (
+        <>
+          <ResultCount total={data.total} unit="upload" />
+          <div className="grid gap-3">
+            {data.items.map((doc) => (
+              <RowCard key={doc.id}>
+                <div className="flex min-w-0 items-start gap-3.5">
+                  <FileBadge filename={doc.filename} />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-lg font-bold tracking-[-0.02em] text-ink">{doc.title}</p>
+                      {doc.space ? (
+                        <Chip tone="accent">{doc.space.courseCode || doc.space.title}</Chip>
+                      ) : (
+                        <Chip>Unfiled</Chip>
+                      )}
+                    </div>
+                    <p className="truncate text-sm text-muted">{doc.filename}</p>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      <Pill>
+                        {doc.quizCount} quiz{doc.quizCount === 1 ? "" : "zes"}
+                      </Pill>
+                      <Pill>Uploaded {new Date(doc.createdAt).toLocaleDateString()}</Pill>
+                      <Pill>{doc.owner.name}</Pill>
+                    </div>
+                    <p className="mt-1.5 truncate text-xs text-muted">{doc.owner.email}</p>
+                  </div>
+                </div>
+                <div className="shrink-0 sm:text-right">
+                  <RowButton tone="danger" disabled={busyId === doc.id} onClick={() => setPending(doc)}>
+                    Delete
+                  </RowButton>
+                </div>
+              </RowCard>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      ) : null}
 
-      {data && data.totalPages > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-            disabled={data.page <= 1}
-            onClick={() => setPage(data.page - 1)}
-          >
-            Previous
-          </button>
-          <p className="text-sm text-muted">
-            Page {data.page} of {data.totalPages}
-          </p>
-          <button
-            type="button"
-            className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-            disabled={data.page >= data.totalPages}
-            onClick={() => setPage(data.page + 1)}
-          >
-            Next
-          </button>
-        </div>
+      {data ? (
+        <Pager page={data.page} totalPages={data.totalPages} total={data.total} unit="upload" onChange={setPage} />
       ) : null}
 
       <ConfirmModal

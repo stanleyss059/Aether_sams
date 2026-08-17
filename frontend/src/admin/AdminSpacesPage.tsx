@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
+import { ACCENTS, accentOf } from "../accents";
 import { api, ApiError, type AdminSpace, type Paginated } from "../api";
 import { ConfirmModal } from "../ConfirmModal";
+import {
+  Chip,
+  EmptyState,
+  ErrorNote,
+  FilterBar,
+  FilterInput,
+  LoadingRows,
+  Pager,
+  Pill,
+  ResultCount,
+  RowButton,
+  RowCard,
+} from "./AdminUI";
 
 export function AdminSpacesPage() {
   const [q, setQ] = useState("");
@@ -50,89 +64,75 @@ export function AdminSpacesPage() {
 
   return (
     <div className="space-y-4">
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setSearch(q.trim());
         }}
       >
-        <input
-          className="min-w-[220px] flex-1 rounded-md border border-line px-3 py-2.5"
+        <FilterInput
           placeholder="Search title, course code, or owner"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <button type="submit" className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white">
-          Search
-        </button>
-      </form>
+      </FilterBar>
 
-      {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
-      {loading ? <p className="text-muted">Loading spaces…</p> : null}
+      {error ? <ErrorNote message={error} /> : null}
+
+      {loading ? <LoadingRows /> : null}
 
       {!loading && data && data.items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
-          No spaces matched that search.
-        </p>
+        <EmptyState
+          title="No spaces found"
+          description="No course space matched that search. Try a course code or owner email."
+        />
       ) : null}
 
-      <div className="grid gap-3">
-        {data?.items.map((space) => (
-          <div
-            key={space.id}
-            className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              {space.courseCode ? (
-                <span className="rounded-full bg-parchment px-2 py-0.5 text-xs font-semibold text-muted">
-                  {space.courseCode}
-                </span>
-              ) : null}
-              <p className="mt-1 font-serif text-xl text-ink">{space.title}</p>
-              <p className="text-sm text-muted">
-                {space.documentCount} material{space.documentCount === 1 ? "" : "s"} · {space.quizCount} quiz
-                {space.quizCount === 1 ? "" : "zes"}
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                Owner: {space.owner.name} ({space.owner.email})
-              </p>
-            </div>
-            <button
-              type="button"
-              className="shrink-0 rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger disabled:opacity-60"
-              disabled={busyId === space.id}
-              onClick={() => setPending(space)}
-            >
-              Delete
-            </button>
+      {!loading && data && data.items.length > 0 ? (
+        <>
+          <ResultCount total={data.total} unit="space" />
+          <div className="grid gap-3">
+            {data.items.map((space) => {
+              const look = ACCENTS[accentOf(space.accent)];
+              return (
+                <RowCard key={space.id}>
+                  <div className="flex min-w-0 items-stretch gap-3.5">
+                    <span className={`w-1.5 shrink-0 rounded-full ${look.bar}`} aria-hidden="true" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-lg font-bold tracking-[-0.02em] text-ink">{space.title}</p>
+                        {space.courseCode ? <Chip tone="accent">{space.courseCode}</Chip> : null}
+                      </div>
+                      {space.description ? (
+                        <p className="mt-0.5 truncate text-sm text-muted">{space.description}</p>
+                      ) : null}
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        <Pill>
+                          {space.documentCount} material{space.documentCount === 1 ? "" : "s"}
+                        </Pill>
+                        <Pill>
+                          {space.quizCount} quiz{space.quizCount === 1 ? "" : "zes"}
+                        </Pill>
+                        <Pill>Created {new Date(space.createdAt).toLocaleDateString()}</Pill>
+                        <Pill>{space.owner.name}</Pill>
+                      </div>
+                      <p className="mt-1.5 truncate text-xs text-muted">{space.owner.email}</p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 sm:text-right">
+                    <RowButton tone="danger" disabled={busyId === space.id} onClick={() => setPending(space)}>
+                      Delete
+                    </RowButton>
+                  </div>
+                </RowCard>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </>
+      ) : null}
 
-      {data && data.totalPages > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-            disabled={data.page <= 1}
-            onClick={() => setPage(data.page - 1)}
-          >
-            Previous
-          </button>
-          <p className="text-sm text-muted">
-            Page {data.page} of {data.totalPages}
-          </p>
-          <button
-            type="button"
-            className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-            disabled={data.page >= data.totalPages}
-            onClick={() => setPage(data.page + 1)}
-          >
-            Next
-          </button>
-        </div>
+      {data ? (
+        <Pager page={data.page} totalPages={data.totalPages} total={data.total} unit="space" onChange={setPage} />
       ) : null}
 
       <ConfirmModal

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { logAudit } from "../lib/audit.js";
-import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 export const authRouter = Router();
 
@@ -40,6 +40,9 @@ authRouter.post(
 authRouter.patch(
   "/me",
   requireAuth,
+  auditFailures("profile.update", "user", {
+    entityId: (req) => req.user?.id,
+  }),
   asyncHandler(async (req, res) => {
     const body = z
       .object({
@@ -60,6 +63,7 @@ authRouter.patch(
       email: updated.email,
       role: updated.role,
       suspendedAt: updated.suspendedAt ? updated.suspendedAt.toISOString() : null,
+      createdAt: updated.createdAt.toISOString(),
     };
     logAudit({
       req,

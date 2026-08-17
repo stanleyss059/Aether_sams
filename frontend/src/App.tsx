@@ -5,6 +5,7 @@ import { api, ApiError, type DocDetail } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { DashboardPage } from "./DashboardPage";
 import { NavBar } from "./NavBar";
+import { OnboardingGuide } from "./OnboardingGuide";
 import { ProfilePage } from "./ProfilePage";
 import { QuizPage } from "./QuizPage";
 import { SpacePage } from "./SpacePage";
@@ -34,12 +35,38 @@ function AdminGuard() {
 }
 
 function Shell() {
+  const { user } = useAuth();
+  const [showGuide, setShowGuide] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const accountAge = Date.now() - new Date(user.createdAt).getTime();
+    const isNewAccount = Number.isFinite(accountAge) && accountAge >= 0 && accountAge <= 24 * 60 * 60 * 1000;
+    if (!isNewAccount) return;
+    try {
+      setShowGuide(localStorage.getItem(`aether:onboarding:${user.id}`) !== "complete");
+    } catch {
+      setShowGuide(true);
+    }
+  }, [user]);
+
+  function dismissGuide() {
+    if (!user) return;
+    try {
+      localStorage.setItem(`aether:onboarding:${user.id}`, "complete");
+    } catch {
+      // The guide can still be dismissed when storage is unavailable.
+    }
+    setShowGuide(false);
+  }
+
   return (
     <div className="min-h-screen">
       <NavBar />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <Outlet />
       </main>
+      <OnboardingGuide open={showGuide} name={user?.name ?? "there"} onClose={dismissGuide} />
     </div>
   );
 }

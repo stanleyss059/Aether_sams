@@ -1,13 +1,22 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import multer from "multer";
+import { writeAudit } from "../lib/audit.js";
 import { AppError, Errors } from "../lib/errors.js";
 import { ensureLocalUser, type AppUser, supabaseAuth } from "../lib/supabase.js";
+
+type AuditIntent = {
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  metadata?: (req: Request) => Record<string, unknown>;
+};
 
 declare global {
   namespace Express {
     interface Request {
       user?: AppUser;
+      auditIntent?: AuditIntent;
     }
   }
 }
@@ -65,37 +74,75 @@ export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   next();
 }
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function auditFailures(
+  action: string,
+  entityType: string,
+  options: {
+    entityId?: (req: Request) => string | null | undefined;
+    metadata?: (req: Request) => Record<string, unknown>;
+  } = {},
+) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    req.auditIntent = {
+      action,
+      entityType,
+      entityId: options.entityId?.(req) ?? null,
+      metadata: options.metadata,
+    };
+    next();
+  };
+}
+
+function describeError(err: unknown) {
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ success: false, error: { message: err.message, code: err.code } });
-    return;
+    return { status: err.statusCode, code: err.code, message: err.message };
   }
   if (err instanceof ZodError) {
-    res.status(400).json({
-      success: false,
-      error: { message: err.issues[0]?.message ?? "Invalid request.", code: "VALIDATION" },
-    });
-    return;
+    return { status: 400, code: "VALIDATION", message: err.issues[0]?.message ?? "Invalid request." };
   }
   if (err instanceof multer.MulterError) {
     const message =
       err.code === "LIMIT_FILE_SIZE"
         ? "File is still over 4MB after compression. Try a shorter export or a .txt file."
         : "Invalid upload.";
-    res.status(400).json({ success: false, error: { message, code: "VALIDATION" } });
+    return { status: 400, code: "VALIDATION", message };
+  }
+  return { status: 500, code: "INTERNAL", message: "Something went wrong. Please try again." };
+}
+
+export async function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  const detail = describeError(err);
+  if (req.user && req.auditIntent) {
+    let attempted: Record<string, unknown> = {};
+    try {
+      attempted = req.auditIntent.metadata?.(req) ?? {};
+    } catch {
+      // Audit metadata must never mask the original request failure.
+    }
+    try {
+      await writeAudit({
+        req,
+        action: `${req.auditIntent.action}_failed`,
+        entityType: req.auditIntent.entityType,
+        entityId: req.auditIntent.entityId,
+        metadata: {
+          ...attempted,
+          errorCode: detail.code,
+          errorMessage: detail.message,
+          statusCode: detail.status,
+        },
+      });
+    } catch (auditError) {
+      console.error("Failed to write failure audit log:", auditError);
+    }
+  }
+  if (detail.status < 500) {
+    res.status(detail.status).json({ success: false, error: { message: detail.message, code: detail.code } });
     return;
   }
   console.error(err);
   res.status(500).json({
     success: false,
-    error: {
-      message:
-        process.env.NODE_ENV === "production"
-          ? "Something went wrong. Please try again."
-          : err instanceof Error
-            ? err.message
-            : "Something went wrong. Please try again.",
-      code: "INTERNAL",
-    },
+    error: { message: detail.message, code: detail.code },
   });
 }

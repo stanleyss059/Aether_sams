@@ -5,11 +5,11 @@ import multer from "multer";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
-import { logAudit } from "../lib/audit.js";
+import { logAudit, writeAudit } from "../lib/audit.js";
 import { extractText } from "../lib/extract.js";
 import { generateQuizFromText } from "../lib/ai.js";
 import { ownedDocument, ownedSpace } from "../lib/study.js";
-import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 const MAX_DECOMPRESSED_BYTES = 25 * 1024 * 1024;
@@ -74,6 +74,14 @@ documentsRouter.get(
 
 documentsRouter.post(
   "/documents",
+  auditFailures("document.create", "document", {
+    metadata: (req) => ({
+      filename: req.file?.originalname,
+      byteLength: req.file?.size,
+      spaceId: typeof req.body?.spaceId === "string" ? req.body.spaceId : undefined,
+      contentLength: req.headers["content-length"],
+    }),
+  }),
   upload.single("file"),
   asyncHandler(async (req, res) => {
     if (!req.file) throw Errors.validation("Choose a file to upload.");
@@ -141,6 +149,13 @@ documentsRouter.post(
 
 documentsRouter.post(
   "/documents/text",
+  auditFailures("document.create", "document", {
+    metadata: (req) => ({
+      filename: typeof req.body?.filename === "string" ? req.body.filename : undefined,
+      spaceId: typeof req.body?.spaceId === "string" ? req.body.spaceId : undefined,
+      textBytes: typeof req.body?.text === "string" ? Buffer.byteLength(req.body.text, "utf8") : undefined,
+    }),
+  }),
   asyncHandler(async (req, res) => {
     const body = z
       .object({
@@ -182,6 +197,32 @@ documentsRouter.post(
   }),
 );
 
+documentsRouter.post(
+  "/documents/failures",
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        filename: z.string().trim().min(1).max(260),
+        fileSize: z.number().int().nonnegative(),
+        errorMessage: z.string().trim().min(1).max(300),
+      })
+      .parse(req.body);
+    await writeAudit({
+      req,
+      action: "document.create_failed",
+      entityType: "document",
+      metadata: {
+        filename: body.filename,
+        byteLength: body.fileSize,
+        errorCode: "CLIENT_PREPARATION",
+        errorMessage: body.errorMessage,
+        statusCode: 0,
+      },
+    });
+    res.status(201).json({ success: true, data: { recorded: true } });
+  }),
+);
+
 documentsRouter.get(
   "/documents/:id",
   asyncHandler(async (req, res) => {
@@ -220,6 +261,12 @@ documentsRouter.get(
 
 documentsRouter.patch(
   "/documents/:id",
+  auditFailures("document.update", "document", {
+    entityId: (req) => req.params.id,
+    metadata: (req) => ({
+      spaceId: typeof req.body?.spaceId === "string" ? req.body.spaceId : req.body?.spaceId,
+    }),
+  }),
   asyncHandler(async (req, res) => {
     const document = await ownedDocument(req.user!.id, req.params.id);
     const body = z.object({ spaceId: z.string().min(1).nullable() }).parse(req.body);
@@ -241,6 +288,7 @@ documentsRouter.patch(
 
 documentsRouter.delete(
   "/documents/:id",
+  auditFailures("document.delete", "document", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
     const document = await ownedDocument(req.user!.id, req.params.id);
     await prisma.document.delete({ where: { id: document.id } });
@@ -260,6 +308,10 @@ documentsRouter.delete(
 
 documentsRouter.post(
   "/documents/:id/generate",
+  auditFailures("quiz.generate", "quiz", {
+    entityId: (req) => req.params.id,
+    metadata: (req) => ({ documentId: req.params.id, questionCount: req.body?.count }),
+  }),
   asyncHandler(async (req, res) => {
     const count = z.coerce.number().int().min(4).max(50).default(50).parse(req.body?.count ?? 50);
     const document = await ownedDocument(req.user!.id, req.params.id);

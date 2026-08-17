@@ -2,6 +2,20 @@ import { useEffect, useState } from "react";
 import { api, ApiError, type AdminUser, type Paginated } from "../api";
 import { useAuth } from "../AuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import {
+  Avatar,
+  Chip,
+  EmptyState,
+  ErrorNote,
+  FilterBar,
+  FilterInput,
+  LoadingRows,
+  Pager,
+  Pill,
+  ResultCount,
+  RowButton,
+  RowCard,
+} from "./AdminUI";
 
 export function AdminUsersPage() {
   const { user: me } = useAuth();
@@ -78,101 +92,80 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-4">
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setSearch(q.trim());
         }}
       >
-        <input
-          className="min-w-[220px] flex-1 rounded-md border border-line px-3 py-2.5"
-          placeholder="Search name or email"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <button type="submit" className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white">
-          Search
-        </button>
-      </form>
+        <FilterInput placeholder="Search name or email" value={q} onChange={(e) => setQ(e.target.value)} />
+      </FilterBar>
 
-      {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
-      {loading ? <p className="text-muted">Loading users…</p> : null}
+      {error ? <ErrorNote message={error} /> : null}
+
+      {loading ? <LoadingRows /> : null}
 
       {!loading && data && data.items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
-          No users matched that search.
-        </p>
+        <EmptyState title="No users found" description="No accounts matched that search. Try a different name or email." />
       ) : null}
 
-      <div className="grid gap-3">
-        {data?.items.map((user) => {
-          const isSelf = user.id === me?.id;
-          const suspended = Boolean(user.suspendedAt);
-          return (
-            <div
-              key={user.id}
-              className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-serif text-xl text-ink">{user.name}</p>
-                  <span className="rounded-full bg-parchment px-2 py-0.5 text-xs font-semibold text-muted">
-                    {user.role}
-                  </span>
-                  {suspended ? (
-                    <span className="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger">
-                      Suspended
-                    </span>
-                  ) : null}
-                </div>
-                <p className="text-sm text-muted">{user.email}</p>
-                <p className="mt-1 text-sm text-muted">
-                  {user.spaceCount} spaces · {user.documentCount} uploads · {user.quizCount} quizzes · joined{" "}
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                {user.role !== "ADMIN" && !isSelf ? (
-                  suspended ? (
-                    <button
-                      type="button"
-                      className="rounded-md border border-forest px-3 py-2 text-sm font-semibold text-forest disabled:opacity-60"
-                      disabled={busyId === user.id}
-                      onClick={() => reactivate(user)}
-                    >
-                      Reactivate
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink disabled:opacity-60"
-                      disabled={busyId === user.id}
-                      onClick={() => suspend(user)}
-                    >
-                      Suspend
-                    </button>
-                  )
-                ) : null}
-                {user.role !== "ADMIN" && !isSelf ? (
-                  <button
-                    type="button"
-                    className="rounded-md border border-danger/30 px-3 py-2 text-sm font-semibold text-danger disabled:opacity-60"
-                    disabled={busyId === user.id}
-                    onClick={() => setPendingDelete(user)}
-                  >
-                    Delete
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {!loading && data && data.items.length > 0 ? (
+        <>
+          <ResultCount total={data.total} unit="account" />
+          <div className="grid gap-3">
+            {data.items.map((user) => {
+              const isSelf = user.id === me?.id;
+              const suspended = Boolean(user.suspendedAt);
+              const protectedAccount = user.role === "ADMIN" || isSelf;
+              return (
+                <RowCard key={user.id}>
+                  <div className="flex min-w-0 items-start gap-3.5">
+                    <Avatar name={user.name} />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-lg font-bold tracking-[-0.02em] text-ink">{user.name}</p>
+                        {user.role === "ADMIN" ? <Chip tone="accent">Admin</Chip> : null}
+                        {suspended ? <Chip tone="danger">Suspended</Chip> : null}
+                        {isSelf ? <Chip>You</Chip> : null}
+                      </div>
+                      <p className="truncate text-sm text-muted">{user.email}</p>
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        <Pill>{user.spaceCount} spaces</Pill>
+                        <Pill>{user.documentCount} uploads</Pill>
+                        <Pill>{user.quizCount} quizzes</Pill>
+                        <Pill>Joined {new Date(user.createdAt).toLocaleDateString()}</Pill>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                    {protectedAccount ? (
+                      <p className="text-xs text-muted">Protected account</p>
+                    ) : (
+                      <>
+                        {suspended ? (
+                          <RowButton tone="accent" disabled={busyId === user.id} onClick={() => reactivate(user)}>
+                            Reactivate
+                          </RowButton>
+                        ) : (
+                          <RowButton disabled={busyId === user.id} onClick={() => suspend(user)}>
+                            Suspend
+                          </RowButton>
+                        )}
+                        <RowButton tone="danger" disabled={busyId === user.id} onClick={() => setPendingDelete(user)}>
+                          Delete
+                        </RowButton>
+                      </>
+                    )}
+                  </div>
+                </RowCard>
+              );
+            })}
+          </div>
+        </>
+      ) : null}
 
-      {data && data.totalPages > 1 ? (
-        <Pager page={data.page} totalPages={data.totalPages} onChange={setPage} />
+      {data ? (
+        <Pager page={data.page} totalPages={data.totalPages} total={data.total} unit="account" onChange={setPage} />
       ) : null}
 
       <ConfirmModal
@@ -186,40 +179,6 @@ export function AdminUsersPage() {
         }}
         onConfirm={confirmDelete}
       />
-    </div>
-  );
-}
-
-function Pager({
-  page,
-  totalPages,
-  onChange,
-}: {
-  page: number;
-  totalPages: number;
-  onChange: (page: number) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <button
-        type="button"
-        className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-        disabled={page <= 1}
-        onClick={() => onChange(page - 1)}
-      >
-        Previous
-      </button>
-      <p className="text-sm text-muted">
-        Page {page} of {totalPages}
-      </p>
-      <button
-        type="button"
-        className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-        disabled={page >= totalPages}
-        onClick={() => onChange(page + 1)}
-      >
-        Next
-      </button>
     </div>
   );
 }

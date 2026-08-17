@@ -54,6 +54,7 @@ export type User = {
   email: string;
   role: UserRole;
   suspendedAt: string | null;
+  createdAt: string;
 };
 
 export type AdminOwner = { id: string; name: string; email: string };

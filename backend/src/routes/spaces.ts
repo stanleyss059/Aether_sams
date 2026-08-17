@@ -3,7 +3,7 @@ import { Errors } from "../lib/errors.js";
 import { logAudit } from "../lib/audit.js";
 import { prisma } from "../lib/prisma.js";
 import { ownedSpace, serializeSpace, spaceInput } from "../lib/study.js";
-import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 export const spacesRouter = Router();
 spacesRouter.use(requireAuth);
@@ -43,6 +43,12 @@ spacesRouter.get(
 
 spacesRouter.post(
   "/spaces",
+  auditFailures("space.create", "space", {
+    metadata: (req) => ({
+      title: typeof req.body?.title === "string" ? req.body.title : undefined,
+      courseCode: typeof req.body?.courseCode === "string" ? req.body.courseCode : undefined,
+    }),
+  }),
   asyncHandler(async (req, res) => {
     const space = await prisma.space.create({
       data: { ...spaceInput.parse(req.body), userId: req.user!.id },
@@ -94,6 +100,10 @@ spacesRouter.get(
 
 spacesRouter.patch(
   "/spaces/:id",
+  auditFailures("space.update", "space", {
+    entityId: (req) => req.params.id,
+    metadata: (req) => ({ title: typeof req.body?.title === "string" ? req.body.title : undefined }),
+  }),
   asyncHandler(async (req, res) => {
     await ownedSpace(req.user!.id, req.params.id);
     const space = await prisma.space.update({
@@ -114,6 +124,7 @@ spacesRouter.patch(
 
 spacesRouter.delete(
   "/spaces/:id",
+  auditFailures("space.delete", "space", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
     await ownedSpace(req.user!.id, req.params.id);
     await prisma.space.delete({ where: { id: req.params.id } });

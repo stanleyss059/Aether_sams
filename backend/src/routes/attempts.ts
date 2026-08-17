@@ -3,13 +3,20 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { logAudit } from "../lib/audit.js";
-import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 export const attemptsRouter = Router();
 attemptsRouter.use(requireAuth);
 
 attemptsRouter.post(
   "/quizzes/:id/attempt",
+  auditFailures("quiz.attempt", "attempt", {
+    metadata: (req) => ({
+      quizId: req.params.id,
+      answerCount:
+        req.body?.answers && typeof req.body.answers === "object" ? Object.keys(req.body.answers).length : undefined,
+    }),
+  }),
   asyncHandler(async (req, res) => {
     const body = z.object({ answers: z.record(z.string(), z.number().int().min(0).max(3)) }).parse(req.body);
     const quiz = await prisma.quiz.findFirst({
