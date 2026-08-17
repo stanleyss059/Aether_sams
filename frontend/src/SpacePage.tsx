@@ -4,7 +4,6 @@ import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge } from "./FileBadge";
-import { prepareUpload } from "./prepareUpload";
 
 type PendingDelete =
   | { kind: "space" }
@@ -87,19 +86,26 @@ export function SpacePage() {
     setBusy(true);
     setError("");
     try {
-      const prepared = await prepareUpload(file);
-      await api("/api/documents/text", {
-        method: "POST",
-        body: JSON.stringify({
-          text: prepared.text,
-          filename: prepared.filename,
-          spaceId: id,
-          title: file.name.replace(/\.[^.]+$/, "") || file.name,
-        }),
-      });
+      // Extract PDF/DOCX on the server. Client-side pdf.js breaks on many iOS Safari
+      // versions ("Iterator" / GlobalWorkerOptions errors).
+      const body = new FormData();
+      body.append("file", file, file.name);
+      body.append("spaceId", id);
+      body.append("title", file.name.replace(/\.[^.]+$/, "") || file.name);
+      await api("/api/documents", { method: "POST", body });
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.");
+      const message =
+        err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.";
+      if (!(err instanceof ApiError)) {
+        void api("/api/documents/failures", {
+          method: "POST",
+          body: JSON.stringify({ filename: file.name, fileSize: file.size, errorMessage: message }),
+        }).catch(() => {
+          // Reporting must never replace the upload error shown to the user.
+        });
+      }
+      setError(message);
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
