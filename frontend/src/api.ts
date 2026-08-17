@@ -20,7 +20,16 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(path, { ...options, credentials: "include", headers });
+  let res: Response;
+  try {
+    res = await fetch(path, { ...options, credentials: "include", headers });
+  } catch {
+    throw new ApiError(
+      "Could not reach the server. Check your connection and try again.",
+      "NETWORK",
+      0,
+    );
+  }
   const text = await res.text();
   let json: Ok<T> | Fail | null = null;
   try {

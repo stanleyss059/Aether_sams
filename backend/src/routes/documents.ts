@@ -139,6 +139,49 @@ documentsRouter.post(
   }),
 );
 
+documentsRouter.post(
+  "/documents/text",
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        text: z.string().trim().min(80).max(3 * 1024 * 1024),
+        filename: z.string().trim().min(1).max(260),
+        title: z.string().trim().min(1).max(160).optional(),
+        spaceId: z.string().trim().min(1).optional(),
+      })
+      .parse(req.body);
+    const extension = path.extname(body.filename).toLowerCase();
+    const mimeType = allowedTypes.get(extension);
+    if (!mimeType) throw Errors.validation("Upload a valid PDF, Word (.docx), or text file.");
+    if (body.spaceId) await ownedSpace(req.user!.id, body.spaceId);
+
+    const document = await prisma.document.create({
+      data: {
+        userId: req.user!.id,
+        spaceId: body.spaceId ?? null,
+        title: body.title ?? body.filename,
+        filename: body.filename,
+        mimeType,
+        extractedText: body.text,
+      },
+    });
+    if (body.spaceId) {
+      await prisma.space.update({ where: { id: body.spaceId }, data: { updatedAt: new Date() } });
+    }
+    logAudit({
+      req,
+      action: "document.create",
+      entityType: "document",
+      entityId: document.id,
+      metadata: { title: document.title, filename: document.filename, spaceId: document.spaceId },
+    });
+    res.status(201).json({
+      success: true,
+      data: { id: document.id, title: document.title, filename: document.filename },
+    });
+  }),
+);
+
 documentsRouter.get(
   "/documents/:id",
   asyncHandler(async (req, res) => {

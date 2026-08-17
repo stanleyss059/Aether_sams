@@ -1,9 +1,8 @@
-const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+const MAX_TEXT_BYTES = 3 * 1024 * 1024;
 
 export type PreparedUpload = {
-  file: File;
-  compressed: boolean;
-  reducedToText: boolean;
+  text: string;
+  filename: string;
 };
 
 function guessMime(name: string) {
@@ -15,14 +14,6 @@ function guessMime(name: string) {
   if (lower.endsWith(".md")) return "text/markdown";
   if (lower.endsWith(".txt")) return "text/plain";
   return "application/octet-stream";
-}
-
-async function gzipFile(file: File): Promise<Blob> {
-  if (typeof CompressionStream === "undefined") {
-    throw new Error("This browser cannot compress uploads. Try Chrome, Edge, or Firefox.");
-  }
-  const stream = file.stream().pipeThrough(new CompressionStream("gzip"));
-  return new Response(stream).blob();
 }
 
 function cleanText(text: string) {
@@ -53,7 +44,7 @@ async function extractDocxText(file: File): Promise<string> {
   return cleanText(result.value);
 }
 
-async function reduceToTextFile(file: File): Promise<File> {
+async function extractUploadText(file: File): Promise<string> {
   const mime = file.type || guessMime(file.name);
   const lower = file.name.toLowerCase();
   let text: string;
@@ -72,41 +63,16 @@ async function reduceToTextFile(file: File): Promise<File> {
   if (text.length < 80) {
     throw new Error("That file does not contain enough readable text to study from.");
   }
-  const base = file.name.replace(/\.[^.]+$/, "") || "notes";
-  return new File([text], `${base}.txt`, { type: "text/plain" });
+  return text;
 }
 
-/** Compress files over 4MB. If still too large (common for PDF/DOCX), extract text and upload that instead. */
+/** Extract in the browser so serverless APIs receive reliable JSON instead of multipart files. */
 export async function prepareUpload(file: File): Promise<PreparedUpload> {
-  if (file.size <= MAX_UPLOAD_BYTES) {
-    return { file, compressed: false, reducedToText: false };
+  const text = await extractUploadText(file);
+  if (new TextEncoder().encode(text).byteLength > MAX_TEXT_BYTES) {
+    throw new Error(
+      `“${file.name}” contains over 3MB of text. Try a shorter export or split it into multiple files.`,
+    );
   }
-
-  try {
-    const gzipped = await gzipFile(file);
-    if (gzipped.size <= MAX_UPLOAD_BYTES) {
-      const compressed = new File([gzipped], file.name, {
-        type: file.type || guessMime(file.name),
-      });
-      return { file: compressed, compressed: true, reducedToText: false };
-    }
-  } catch {
-    // Fall through to text extraction.
-  }
-
-  const textFile = await reduceToTextFile(file);
-  if (textFile.size > MAX_UPLOAD_BYTES) {
-    const gzippedText = await gzipFile(textFile);
-    if (gzippedText.size > MAX_UPLOAD_BYTES) {
-      throw new Error(
-        `“${file.name}” is still over 4MB after compression. Try a shorter export or a .txt file.`,
-      );
-    }
-    return {
-      file: new File([gzippedText], textFile.name, { type: "text/plain" }),
-      compressed: true,
-      reducedToText: true,
-    };
-  }
-  return { file: textFile, compressed: false, reducedToText: true };
+  return { text, filename: file.name };
 }

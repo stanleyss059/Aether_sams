@@ -32,7 +32,7 @@ export function createApp() {
   if (config?.isProd) app.set("trust proxy", 1);
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({ origin: true, credentials: true }));
-  app.use(express.json({ limit: "2mb" }));
+  app.use(express.json({ limit: "4mb" }));
 
   app.get("/api/health", (_req, res) => {
     res.status(config ? 200 : 500).json({

@@ -88,13 +88,15 @@ export function SpacePage() {
     setError("");
     try {
       const prepared = await prepareUpload(file);
-      const body = new FormData();
-      body.append("file", prepared.file, prepared.file.name);
-      body.append("spaceId", id);
-      body.append("title", file.name.replace(/\.[^.]+$/, "") || file.name);
-      if (prepared.compressed) body.append("compressed", "gzip");
-      if (prepared.reducedToText) body.append("displayFilename", file.name);
-      await api("/api/documents", { method: "POST", body });
+      await api("/api/documents/text", {
+        method: "POST",
+        body: JSON.stringify({
+          text: prepared.text,
+          filename: prepared.filename,
+          spaceId: id,
+          title: file.name.replace(/\.[^.]+$/, "") || file.name,
+        }),
+      });
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.");
