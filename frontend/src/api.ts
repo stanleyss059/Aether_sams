@@ -13,6 +13,10 @@ export class ApiError extends Error {
 type Ok<T> = { success: true; data: T };
 type Fail = { success: false; error: { message: string; code: string } };
 
+function isFail<T>(result: Ok<T> | Fail): result is Fail {
+  return !result.success;
+}
+
 async function bearerToken() {
   const { data: sessionData } = await supabase.auth.getSession();
   let session = sessionData.session;
@@ -66,7 +70,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
       res.status,
     );
   }
-  if (!json.success) {
+  if (isFail(json)) {
     if (json.error.code === "UNAUTHORIZED" && res.status === 401) {
       await supabase.auth.signOut();
     }
