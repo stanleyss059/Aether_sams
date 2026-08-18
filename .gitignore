@@ -1,6 +1,7 @@
 node_modules
 dist
 .env
+backend/src/app.cjs
 *.db
 *.log
 backend/uploads
