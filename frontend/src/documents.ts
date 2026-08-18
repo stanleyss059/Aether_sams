@@ -50,7 +50,11 @@ async function parseUploadResponse(res: Response): Promise<DocumentSummary> {
     json = JSON.parse(text) as ApiPayload<DocumentSummary>;
   } catch {
     throw new ApiError(
-      res.status >= 500 ? "The server hit an error. Try again." : "Unexpected response from the server.",
+      res.status === 503
+        ? "Upload failed because the API is unavailable. Redeploy or try again in a moment."
+        : res.status >= 500
+          ? "The server hit an error. Try again."
+          : "Unexpected response from the server.",
       "HTTP",
       res.status,
     );
@@ -71,6 +75,7 @@ export async function uploadDocument(input: UploadInput): Promise<DocumentSummar
   body.append("file", input.file, input.file.name);
   if (input.spaceId) body.append("spaceId", input.spaceId);
   body.append("title", input.title ?? (input.file.name.replace(/\.[^.]+$/, "") || input.file.name));
+  body.append("accessToken", token);
 
   const res = await fetch("/api/documents", {
     method: "POST",

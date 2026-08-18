@@ -13,10 +13,25 @@ import {
 } from "../lib/documents-service.js";
 import { Errors } from "../lib/errors.js";
 import { fileUpload } from "../lib/upload.js";
-import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, attachSupabaseUser, auditFailures, requireAuth } from "../middleware/errorHandler.js";
+
+function uploadSingle(field: string) {
+  return (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
+    fileUpload.single(field)(req, res, (error) => {
+      if (error) next(error);
+      else next();
+    });
+  };
+}
 
 export const documentsRouter = Router();
-documentsRouter.use(requireAuth);
+documentsRouter.use((req, res, next) => {
+  if (req.method === "POST" && req.path === "/documents") {
+    next();
+    return;
+  }
+  requireAuth(req, res, next);
+});
 
 documentsRouter.get(
   "/documents",
@@ -35,7 +50,9 @@ documentsRouter.post(
       spaceId: typeof req.body?.spaceId === "string" ? req.body.spaceId : undefined,
     }),
   }),
-  fileUpload.single("file"),
+  uploadSingle("file"),
+  attachSupabaseUser,
+  requireAuth,
   asyncHandler(async (req, res) => {
     if (!req.file) throw Errors.validation("Choose a file to upload.");
 

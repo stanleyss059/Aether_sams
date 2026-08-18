@@ -6,13 +6,21 @@ const require = createRequire(import.meta.url);
 
 type PdfParse = (buf: Buffer) => Promise<{ text: string }>;
 
-function appRoot() {
-  return path.dirname(fileURLToPath(import.meta.url));
+function vendorRoots() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return [path.join(here, "vercel-vendor"), path.join(process.cwd(), "src", "vercel-vendor")];
 }
 
 function loadPdfParse(): PdfParse {
   if (process.env.VERCEL) {
-    return require(path.join(appRoot(), "vercel-vendor", "pdf-parse")) as PdfParse;
+    for (const root of vendorRoots()) {
+      try {
+        return require(path.join(root, "pdf-parse")) as PdfParse;
+      } catch {
+        // Try the next layout Vercel may use for bundled functions.
+      }
+    }
+    throw new Error("PDF parser is unavailable on this deployment.");
   }
   return require("pdf-parse") as PdfParse;
 }
@@ -23,7 +31,14 @@ type Mammoth = {
 
 async function loadMammoth(): Promise<Mammoth> {
   if (process.env.VERCEL) {
-    return require(path.join(appRoot(), "vercel-vendor", "mammoth")) as Mammoth;
+    for (const root of vendorRoots()) {
+      try {
+        return require(path.join(root, "mammoth")) as Mammoth;
+      } catch {
+        // Try the next layout Vercel may use for bundled functions.
+      }
+    }
+    throw new Error("Word parser is unavailable on this deployment.");
   }
   const mod = await import("mammoth");
   return mod.default;

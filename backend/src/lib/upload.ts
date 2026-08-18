@@ -2,7 +2,7 @@ import path from "node:path";
 import multer from "multer";
 import { Errors } from "./errors.js";
 
-export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 3.5 * 1024 * 1024;
 
 export const ALLOWED_UPLOAD_TYPES = new Map([
   [".pdf", "application/pdf"],
@@ -13,7 +13,7 @@ export const ALLOWED_UPLOAD_TYPES = new Map([
 
 export const fileUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 4 },
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 8 },
   fileFilter: (_req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();
     const expected = ALLOWED_UPLOAD_TYPES.get(extension);

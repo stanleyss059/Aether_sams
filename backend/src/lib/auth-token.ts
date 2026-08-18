@@ -13,12 +13,21 @@ function parseBearer(value: string) {
 
 const HEADER_NAMES = ["authorization", "x-aether-authorization"] as const;
 
+function tokenFromBody(req: Request) {
+  const raw = req.body?.accessToken;
+  if (typeof raw !== "string") return "";
+  return parseBearer(raw);
+}
+
 /** Read the Supabase JWT from request headers (Vercel-safe). */
 export function readAccessToken(req: Request) {
   for (const name of HEADER_NAMES) {
     const token = parseBearer(firstHeader(req.headers[name]));
     if (token) return token;
   }
+
+  const bodyToken = tokenFromBody(req);
+  if (bodyToken) return bodyToken;
 
   const vercelHeaders = firstHeader(req.headers["x-vercel-sc-headers"]);
   if (!vercelHeaders) return "";
