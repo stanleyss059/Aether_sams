@@ -15,8 +15,43 @@ export async function ownedSpace(userId: string, id: string) {
   return space;
 }
 
+/** List/detail views — never load multi-MB file bytes or full extracted text. */
+export const documentSummarySelect = {
+  id: true,
+  userId: true,
+  spaceId: true,
+  title: true,
+  filename: true,
+  mimeType: true,
+  summary: true,
+  createdAt: true,
+} as const;
+
+/** Includes extracted text for quiz/notes generation — not file bytes. */
+export const documentWithTextSelect = {
+  ...documentSummarySelect,
+  extractedText: true,
+} as const;
+
 export async function ownedDocument(userId: string, id: string) {
-  const document = await prisma.document.findFirst({ where: { id, userId } });
+  const document = await prisma.document.findFirst({
+    where: { id, userId },
+    select: documentWithTextSelect,
+  });
+  if (!document) throw Errors.notFound("Document not found.");
+  return document;
+}
+
+export async function ownedDocumentForDownload(userId: string, id: string) {
+  const document = await prisma.document.findFirst({
+    where: { id, userId },
+    select: {
+      filename: true,
+      mimeType: true,
+      extractedText: true,
+      fileData: true,
+    },
+  });
   if (!document) throw Errors.notFound("Document not found.");
   return document;
 }

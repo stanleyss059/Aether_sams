@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Errors } from "../lib/errors.js";
 import { logAudit } from "../lib/audit.js";
 import { prisma } from "../lib/prisma.js";
-import { ownedSpace, serializeSpace, spaceInput } from "../lib/study.js";
+import { ownedSpace, serializeSpace, spaceInput, documentSummarySelect } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 export const spacesRouter = Router();
@@ -21,7 +21,10 @@ spacesRouter.get(
       prisma.document.findMany({
         where: { userId, spaceId: null },
         orderBy: { createdAt: "desc" },
-        include: { _count: { select: { quizzes: true } } },
+        select: {
+          ...documentSummarySelect,
+          _count: { select: { quizzes: true } },
+        },
       }),
     ]);
     res.json({
@@ -52,7 +55,7 @@ spacesRouter.post(
   asyncHandler(async (req, res) => {
     const space = await prisma.space.create({
       data: { ...spaceInput.parse(req.body), userId: req.user!.id },
-      include: { documents: true },
+      include: { documents: { select: documentSummarySelect } },
     });
     logAudit({
       req,
@@ -73,7 +76,8 @@ spacesRouter.get(
       include: {
         documents: {
           orderBy: { createdAt: "desc" },
-          include: {
+          select: {
+            ...documentSummarySelect,
             _count: { select: { quizzes: true } },
             quizzes: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true } },
           },

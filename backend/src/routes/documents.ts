@@ -10,7 +10,7 @@ import { extractText } from "../lib/extract.js";
 import { generateNotesFromText, generateQuizFromText } from "../lib/ai.js";
 import { queueDocumentNotes } from "../lib/notes.js";
 import { sendDocumentDownload } from "../lib/download.js";
-import { ownedDocument, ownedSpace } from "../lib/study.js";
+import { ownedDocument, ownedDocumentForDownload, ownedSpace, documentSummarySelect } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -47,9 +47,10 @@ documentsRouter.get(
     const documents = await prisma.document.findMany({
       where: { userId: req.user!.id },
       orderBy: { createdAt: "desc" },
-      include: {
-        _count: { select: { quizzes: true } },
+      select: {
+        ...documentSummarySelect,
         space: { select: { id: true, title: true, courseCode: true } },
+        _count: { select: { quizzes: true } },
         quizzes: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -234,7 +235,7 @@ documentsRouter.post(
 documentsRouter.get(
   "/documents/:id/download",
   asyncHandler(async (req, res) => {
-    const document = await ownedDocument(req.user!.id, req.params.id);
+    const document = await ownedDocumentForDownload(req.user!.id, req.params.id);
     sendDocumentDownload(res, document);
   }),
 );
@@ -244,12 +245,19 @@ documentsRouter.get(
   asyncHandler(async (req, res) => {
     const document = await prisma.document.findFirst({
       where: { id: req.params.id, userId: req.user!.id },
-      include: {
+      select: {
+        ...documentSummarySelect,
+        extractedText: true,
+        space: { select: { id: true, title: true, courseCode: true } },
         quizzes: {
           orderBy: { createdAt: "desc" },
-          include: { _count: { select: { questions: true, attempts: true } } },
+          select: {
+            id: true,
+            title: true,
+            createdAt: true,
+            _count: { select: { questions: true, attempts: true } },
+          },
         },
-        space: { select: { id: true, title: true, courseCode: true } },
       },
     });
     if (!document) throw Errors.notFound("Document not found.");

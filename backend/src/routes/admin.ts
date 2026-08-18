@@ -212,7 +212,11 @@ adminRouter.get(
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          filename: true,
+          createdAt: true,
           user: { select: { id: true, name: true, email: true } },
           space: { select: { id: true, title: true, courseCode: true } },
           _count: { select: { quizzes: true } },
