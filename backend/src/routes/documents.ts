@@ -9,7 +9,7 @@ import { logAudit, writeAudit } from "../lib/audit.js";
 import { extractText } from "../lib/extract.js";
 import { generateNotesFromText, generateQuizFromText } from "../lib/ai.js";
 import { queueDocumentNotes } from "../lib/notes.js";
-import { attachmentFilename, textDownloadFilename } from "../lib/download.js";
+import { sendDocumentDownload } from "../lib/download.js";
 import { ownedDocument, ownedSpace } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
@@ -130,6 +130,7 @@ documentsRouter.post(
         filename: displayName,
         mimeType,
         extractedText: text,
+        fileData: Uint8Array.from(buffer),
       },
     });
     if (metadata.spaceId) {
@@ -182,6 +183,7 @@ documentsRouter.post(
         filename: body.filename,
         mimeType,
         extractedText: body.text,
+        fileData: Uint8Array.from(Buffer.from(body.text, "utf8")),
       },
     });
     if (body.spaceId) {
@@ -233,10 +235,7 @@ documentsRouter.get(
   "/documents/:id/download",
   asyncHandler(async (req, res) => {
     const document = await ownedDocument(req.user!.id, req.params.id);
-    const filename = textDownloadFilename(document.filename);
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Content-Disposition", attachmentFilename(filename));
-    res.send(document.extractedText);
+    sendDocumentDownload(res, document);
   }),
 );
 

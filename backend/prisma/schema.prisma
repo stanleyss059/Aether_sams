@@ -67,6 +67,7 @@ model Document {
   filename      String
   mimeType      String
   extractedText String
+  fileData      Bytes?
   summary       String   @default("")
   createdAt     DateTime @default(now())
 
