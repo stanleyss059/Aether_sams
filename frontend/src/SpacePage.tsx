@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
-import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
+import { api, ApiError, requireAccessToken, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 
@@ -88,6 +88,7 @@ export function SpacePage() {
     setBusy(true);
     setError("");
     try {
+      await requireAccessToken();
       // Extract PDF/DOCX on the server. Client-side pdf.js breaks on many iOS Safari
       // versions ("Iterator" / GlobalWorkerOptions errors).
       const body = new FormData();
