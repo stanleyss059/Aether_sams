@@ -1,18 +1,13 @@
 import * as esbuild from "esbuild";
 
+// Keep heavy/runtime-native deps external; bundle zod and the rest so Vercel tracing
+// does not omit required modules (see "Cannot find module 'zod'" in function logs).
 const external = [
   "@prisma/client",
   "prisma",
-  "@supabase/supabase-js",
-  "cors",
-  "dotenv",
-  "express",
-  "helmet",
   "mammoth",
-  "multer",
   "pdf-parse",
   "pdf-parse/lib/pdf-parse.js",
-  "zod",
 ];
 
 await esbuild.build({
