@@ -6,7 +6,9 @@ await esbuild.build({
   platform: "node",
   format: "cjs",
   outfile: "src/app.cjs",
-  packages: "external",
+  // Prisma's query engine cannot be bundled. Everything else is inlined so the
+  // Vercel function does not need node_modules for zod/express/etc.
+  external: ["@prisma/client", "prisma"],
   banner: {
     js: "const require_import_meta_url = require('node:url').pathToFileURL(__filename).href;",
   },
