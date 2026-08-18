@@ -1,14 +1,27 @@
 import * as esbuild from "esbuild";
 
+const external = [
+  "@prisma/client",
+  "prisma",
+  "@supabase/supabase-js",
+  "cors",
+  "dotenv",
+  "express",
+  "helmet",
+  "mammoth",
+  "multer",
+  "pdf-parse",
+  "pdf-parse/lib/pdf-parse.js",
+  "zod",
+];
+
 await esbuild.build({
   entryPoints: ["src/vercel-app.ts"],
   bundle: true,
   platform: "node",
   format: "cjs",
   outfile: "src/app.cjs",
-  // Prisma's query engine cannot be bundled. Everything else is inlined so the
-  // Vercel function does not need node_modules for zod/express/etc.
-  external: ["@prisma/client", "prisma"],
+  external,
   banner: {
     js: "const require_import_meta_url = require('node:url').pathToFileURL(__filename).href;",
   },
