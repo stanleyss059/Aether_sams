@@ -9,16 +9,16 @@
       "root": "backend",
       "framework": "express",
       "installCommand": "npm install && npx prisma generate",
-      "buildCommand": "npm run build:vercel"
+      "buildCommand": "npm run build:vercel",
+      "functions": {
+        "src/app.cjs": {
+          "includeFiles": "src/vercel-vendor/**"
+        }
+      }
     }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "backend" } },
     { "source": "/(.*)", "destination": { "service": "frontend" } }
-  ],
-  "functions": {
-    "backend/src/app.cjs": {
-      "includeFiles": "backend/src/vercel-vendor/**"
-    }
-  }
+  ]
 }
