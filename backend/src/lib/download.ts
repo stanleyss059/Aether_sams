@@ -1,5 +1,6 @@
 import type { Response } from "express";
 import path from "node:path";
+import { downloadStoredFile } from "./storage.js";
 
 export function textDownloadFilename(filename: string) {
   const extension = path.extname(filename).toLowerCase();
@@ -17,10 +18,23 @@ type DownloadDocument = {
   filename: string;
   mimeType: string;
   extractedText: string;
+  storagePath?: string | null;
   fileData: Uint8Array | null;
 };
 
-export function sendDocumentDownload(res: Response, document: DownloadDocument) {
+export async function sendDocumentDownload(
+  res: Response,
+  document: DownloadDocument,
+  accessToken?: string,
+) {
+  if (document.storagePath) {
+    const file = await downloadStoredFile(document.storagePath, accessToken);
+    res.setHeader("Content-Type", document.mimeType);
+    res.setHeader("Content-Disposition", attachmentFilename(document.filename));
+    res.send(file);
+    return;
+  }
+
   if (document.fileData && document.fileData.length > 0) {
     res.setHeader("Content-Type", document.mimeType);
     res.setHeader("Content-Disposition", attachmentFilename(document.filename));

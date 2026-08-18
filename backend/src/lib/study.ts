@@ -24,6 +24,7 @@ export const documentSummarySelect = {
   filename: true,
   mimeType: true,
   summary: true,
+  fileUrl: true,
   createdAt: true,
 } as const;
 
@@ -31,6 +32,7 @@ export const documentSummarySelect = {
 export const documentWithTextSelect = {
   ...documentSummarySelect,
   extractedText: true,
+  storagePath: true,
 } as const;
 
 export async function ownedDocument(userId: string, id: string) {
@@ -49,6 +51,8 @@ export async function ownedDocumentForDownload(userId: string, id: string) {
       filename: true,
       mimeType: true,
       extractedText: true,
+      storagePath: true,
+      fileUrl: true,
       fileData: true,
     },
   });

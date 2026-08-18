@@ -18,6 +18,7 @@ const envSchema = z
     SESSION_SECRET: z.string().min(32).optional(),
     SUPABASE_URL: z.url("SUPABASE_URL must be a valid URL."),
     SUPABASE_ANON_KEY: z.string().min(20, "SUPABASE_ANON_KEY is required."),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     FRONTEND_URL: z.string().optional(),
     VERCEL_URL: z.string().optional(),
     VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
@@ -64,6 +65,10 @@ export const config = parsed.success
       port: parsed.data.PORT,
       supabaseUrl: parsed.data.SUPABASE_URL,
       supabaseAnonKey: parsed.data.SUPABASE_ANON_KEY,
+      supabaseServiceRoleKey:
+        parsed.data.SUPABASE_SERVICE_ROLE_KEY && parsed.data.SUPABASE_SERVICE_ROLE_KEY.length >= 20
+          ? parsed.data.SUPABASE_SERVICE_ROLE_KEY.trim()
+          : null,
       frontendUrl: resolveFrontendUrl(parsed.data),
       openaiKey: parsed.data.OPENAI_API_KEY,
       openaiBaseUrl: parsed.data.OPENAI_BASE_URL,

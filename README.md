@@ -41,6 +41,7 @@ In the Supabase dashboard, under **Authentication → Providers → Email**, you
 | `SESSION_SECRET` | Random string, at least 32 characters |
 | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | `SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase **service role** key (server uploads to the `files` Storage bucket) |
 | `VITE_SUPABASE_URL` | Same URL (frontend) |
 | `VITE_SUPABASE_ANON_KEY` | Same anon key (frontend) |
 | `OPENAI_API_KEY` | OpenAI or OpenRouter key |
