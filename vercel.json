@@ -9,8 +9,7 @@
       "root": "backend",
       "framework": "express",
       "installCommand": "npm install && npx prisma generate",
-      "buildCommand": "npm run build:vercel",
-      "maxDuration": 60
+      "buildCommand": "npm run build:vercel"
     }
   },
   "rewrites": [
