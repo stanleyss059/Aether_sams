@@ -1,12 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const TABS = [
-  { to: "/admin", label: "Dashboard", end: true },
-  { to: "/admin/users", label: "Users" },
-  { to: "/admin/uploads", label: "Uploads" },
-  { to: "/admin/spaces", label: "Spaces" },
-  { to: "/admin/profile", label: "Profile" },
-  { to: "/admin/audit-logs", label: "Audit logs" },
+  { to: "/admin", label: "Dashboard", icon: "📊", end: true },
+  { to: "/admin/users", label: "Users", icon: "👥" },
+  { to: "/admin/uploads", label: "Uploads", icon: "📁" },
+  { to: "/admin/spaces", label: "Spaces", icon: "🏠" },
+  { to: "/admin/profile", label: "Profile", icon: "⚙️" },
+  { to: "/admin/audit-logs", label: "Audit logs", icon: "📋" },
 ];
 
 export function AdminShell() {
@@ -18,21 +18,26 @@ export function AdminShell() {
         <p className="mt-1 text-muted">Monitor accounts, content, and every meaningful action across Aether.</p>
       </div>
 
-      <nav className="flex flex-wrap gap-1 rounded-xl border border-line bg-white p-1.5">
-        {TABS.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.end}
-            className={({ isActive }) =>
-              `rounded-lg px-3 py-2 text-sm font-semibold no-underline transition ${
-                isActive ? "bg-forest text-white shadow-sm" : "text-muted hover:bg-slate/10 hover:text-ink"
-              }`
-            }
-          >
-            {tab.label}
-          </NavLink>
-        ))}
+      <nav className="rounded-2xl border border-line bg-white p-2 shadow-sm">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {TABS.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.end}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-2 rounded-xl px-4 py-4 text-sm font-semibold no-underline transition-all ${
+                  isActive
+                    ? "bg-forest text-white shadow-md"
+                    : "text-muted hover:bg-slate/50 hover:text-ink"
+                }`
+              }
+            >
+              <span className="text-2xl">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </NavLink>
+          ))}
+        </div>
       </nav>
 
       <Outlet />
