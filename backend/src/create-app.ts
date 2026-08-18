@@ -36,7 +36,7 @@ export function createApp() {
     cors({
       origin: true,
       credentials: true,
-      allowedHeaders: ["Authorization", "Content-Type", "X-Aether-Authorization", "X-Authorization"],
+      allowedHeaders: ["Authorization", "Content-Type", "X-Aether-Authorization"],
     }),
   );
   const jsonParser = express.json({ limit: "4mb" });

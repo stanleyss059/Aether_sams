@@ -1,51 +1,17 @@
-import path from "node:path";
-import { gunzipSync } from "node:zlib";
 import { Router } from "express";
-import multer from "multer";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
-import { logAudit, writeAudit } from "../lib/audit.js";
-import { extractText } from "../lib/extract.js";
+import { logAudit } from "../lib/audit.js";
+import { createDocumentFromUpload } from "../lib/create-document.js";
 import { generateNotesFromText, generateQuizFromText } from "../lib/ai.js";
-import { queueDocumentNotes } from "../lib/notes.js";
 import { sendDocumentDownload } from "../lib/download.js";
+import { fileUpload, mimeTypeFor } from "../lib/upload.js";
 import { ownedDocument, ownedDocumentForDownload, ownedSpace, documentSummarySelect } from "../lib/study.js";
-import { asyncHandler, attachSupabaseUser, auditFailures, requireAuth } from "../middleware/errorHandler.js";
-
-const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
-const MAX_DECOMPRESSED_BYTES = 25 * 1024 * 1024;
-
-const allowedTypes = new Map([
-  [".pdf", "application/pdf"],
-  [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-  [".txt", "text/plain"],
-  [".md", "text/markdown"],
-]);
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 8 },
-  fileFilter: (_req, file, cb) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    const expectedType = allowedTypes.get(extension);
-    // Gzipped uploads keep the original filename but may arrive as octet-stream.
-    if (expectedType && (expectedType === file.mimetype || file.mimetype === "application/octet-stream")) {
-      cb(null, true);
-      return;
-    }
-    cb(Errors.validation("Upload a valid PDF, Word (.docx), or text file."));
-  },
-});
+import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 export const documentsRouter = Router();
-documentsRouter.use((req, res, next) => {
-  if (req.method === "POST" && req.path === "/documents") {
-    next();
-    return;
-  }
-  requireAuth(req, res, next);
-});
+documentsRouter.use(requireAuth);
 
 documentsRouter.get(
   "/documents",
@@ -88,63 +54,28 @@ documentsRouter.post(
       filename: req.file?.originalname,
       byteLength: req.file?.size,
       spaceId: typeof req.body?.spaceId === "string" ? req.body.spaceId : undefined,
-      contentLength: req.headers["content-length"],
     }),
   }),
-  upload.single("file"),
-  attachSupabaseUser,
-  requireAuth,
+  fileUpload.single("file"),
   asyncHandler(async (req, res) => {
     if (!req.file) throw Errors.validation("Choose a file to upload.");
-    const metadata = z
+
+    const fields = z
       .object({
         title: z.string().trim().min(1).max(160).optional(),
         spaceId: z.string().trim().min(1).optional(),
-        compressed: z.enum(["gzip"]).optional(),
-        displayFilename: z.string().trim().min(1).max(260).optional(),
       })
       .parse(req.body);
-    if (metadata.spaceId) await ownedSpace(req.user!.id, metadata.spaceId);
 
-    let buffer = req.file.buffer;
-    if (metadata.compressed === "gzip") {
-      try {
-        buffer = gunzipSync(buffer);
-      } catch {
-        throw Errors.validation("Could not decompress that upload. Try uploading again.");
-      }
-      if (buffer.length > MAX_DECOMPRESSED_BYTES) {
-        throw Errors.validation("That file is too large after decompression.");
-      }
-    }
-
-    const displayName = metadata.displayFilename ?? req.file.originalname;
-    const mimeType =
-      allowedTypes.get(path.extname(req.file.originalname).toLowerCase()) ??
-      (req.file.mimetype !== "application/octet-stream" ? req.file.mimetype : "text/plain");
-
-    let text: string;
-    try {
-      text = await extractText(buffer, mimeType, req.file.originalname);
-    } catch (error) {
-      throw Errors.validation(error instanceof Error ? error.message : "Could not read that file.");
-    }
-    if (text.length < 80) throw Errors.validation("That file does not contain enough readable text to study from.");
-
-    const document = await prisma.document.create({
-      data: {
-        userId: req.user!.id,
-        spaceId: metadata.spaceId ?? null,
-        title: metadata.title ?? displayName,
-        filename: displayName,
-        mimeType,
-        extractedText: text,
-        fileData: Uint8Array.from(buffer),
-      },
+    const document = await createDocumentFromUpload({
+      userId: req.user!.id,
+      buffer: req.file.buffer,
+      filename: req.file.originalname,
+      mimeType: mimeTypeFor(req.file.originalname, req.file.mimetype),
+      title: fields.title ?? req.file.originalname,
+      spaceId: fields.spaceId ?? null,
     });
-    if (metadata.spaceId) {
-      await prisma.space.update({ where: { id: metadata.spaceId }, data: { updatedAt: new Date() } });
-    }
+
     logAudit({
       req,
       action: "document.create",
@@ -152,91 +83,11 @@ documentsRouter.post(
       entityId: document.id,
       metadata: { title: document.title, filename: document.filename, spaceId: document.spaceId },
     });
-    if (process.env.VERCEL) void queueDocumentNotes(document);
-    else await queueDocumentNotes(document);
+
     res.status(201).json({
       success: true,
       data: { id: document.id, title: document.title, filename: document.filename },
     });
-  }),
-);
-
-documentsRouter.post(
-  "/documents/text",
-  auditFailures("document.create", "document", {
-    metadata: (req) => ({
-      filename: typeof req.body?.filename === "string" ? req.body.filename : undefined,
-      spaceId: typeof req.body?.spaceId === "string" ? req.body.spaceId : undefined,
-      textBytes: typeof req.body?.text === "string" ? Buffer.byteLength(req.body.text, "utf8") : undefined,
-    }),
-  }),
-  asyncHandler(async (req, res) => {
-    const body = z
-      .object({
-        text: z.string().trim().min(80).max(3 * 1024 * 1024),
-        filename: z.string().trim().min(1).max(260),
-        title: z.string().trim().min(1).max(160).optional(),
-        spaceId: z.string().trim().min(1).optional(),
-      })
-      .parse(req.body);
-    const extension = path.extname(body.filename).toLowerCase();
-    const mimeType = allowedTypes.get(extension);
-    if (!mimeType) throw Errors.validation("Upload a valid PDF, Word (.docx), or text file.");
-    if (body.spaceId) await ownedSpace(req.user!.id, body.spaceId);
-
-    const document = await prisma.document.create({
-      data: {
-        userId: req.user!.id,
-        spaceId: body.spaceId ?? null,
-        title: body.title ?? body.filename,
-        filename: body.filename,
-        mimeType,
-        extractedText: body.text,
-        fileData: Uint8Array.from(Buffer.from(body.text, "utf8")),
-      },
-    });
-    if (body.spaceId) {
-      await prisma.space.update({ where: { id: body.spaceId }, data: { updatedAt: new Date() } });
-    }
-    logAudit({
-      req,
-      action: "document.create",
-      entityType: "document",
-      entityId: document.id,
-      metadata: { title: document.title, filename: document.filename, spaceId: document.spaceId },
-    });
-    if (process.env.VERCEL) void queueDocumentNotes(document);
-    else await queueDocumentNotes(document);
-    res.status(201).json({
-      success: true,
-      data: { id: document.id, title: document.title, filename: document.filename },
-    });
-  }),
-);
-
-documentsRouter.post(
-  "/documents/failures",
-  asyncHandler(async (req, res) => {
-    const body = z
-      .object({
-        filename: z.string().trim().min(1).max(260),
-        fileSize: z.number().int().nonnegative(),
-        errorMessage: z.string().trim().min(1).max(300),
-      })
-      .parse(req.body);
-    await writeAudit({
-      req,
-      action: "document.create_failed",
-      entityType: "document",
-      metadata: {
-        filename: body.filename,
-        byteLength: body.fileSize,
-        errorCode: "CLIENT_PREPARATION",
-        errorMessage: body.errorMessage,
-        statusCode: 0,
-      },
-    });
-    res.status(201).json({ success: true, data: { recorded: true } });
   }),
 );
 

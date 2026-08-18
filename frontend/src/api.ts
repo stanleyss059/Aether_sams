@@ -17,59 +17,31 @@ function isFail<T>(result: Ok<T> | Fail): result is Fail {
   return !result.success;
 }
 
-function sessionExpiresAtMs(session: { expires_at?: number | null }) {
-  return (session.expires_at ?? 0) * 1000;
-}
-
-function sessionNeedsRefresh(session: { expires_at?: number | null }) {
-  const expiresAtMs = sessionExpiresAtMs(session);
-  if (expiresAtMs <= 0) return true;
-  return expiresAtMs < Date.now() + 60_000;
-}
-
 async function bearerToken() {
-  let { data: sessionData } = await supabase.auth.getSession();
-  let session = sessionData.session;
+  let { data } = await supabase.auth.getSession();
+  let session = data.session;
 
-  if (!session || sessionNeedsRefresh(session)) {
+  const expiresSoon = (session?.expires_at ?? 0) * 1000 < Date.now() + 60_000;
+  if (!session || expiresSoon) {
     const refreshed = await supabase.auth.refreshSession();
     session = refreshed.data.session ?? null;
-  }
-
-  if (!session?.access_token) {
-    const { data: userData, error } = await supabase.auth.getUser();
-    if (error || !userData.user) return null;
-    ({ data: sessionData } = await supabase.auth.getSession());
-    session = sessionData.session;
   }
 
   return session?.access_token ?? null;
 }
 
-export async function requireAccessToken() {
-  const token = await bearerToken();
-  if (!token) {
-    throw new ApiError("Your session expired. Please sign in again.", "UNAUTHORIZED", 401);
-  }
-  return token;
-}
-
-function applyAuthHeaders(headers: Headers, token: string | null, body?: RequestInit["body"]) {
+function withAuthHeaders(headers: Headers, token: string | null) {
   if (!token) return;
   headers.set("Authorization", `Bearer ${token}`);
-  // Vercel production often strips Authorization; this custom header survives the proxy.
+  // Vercel production may strip Authorization; this header survives the proxy.
   headers.set("X-Aether-Authorization", `Bearer ${token}`);
-  if (typeof FormData !== "undefined" && body instanceof FormData && !body.has("accessToken")) {
-    body.append("accessToken", token);
-  }
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (!isForm && options.body) headers.set("Content-Type", "application/json");
-  const token = await bearerToken();
-  applyAuthHeaders(headers, token, options.body);
+  withAuthHeaders(headers, await bearerToken());
   let res: Response;
   try {
     res = await fetch(path, { ...options, credentials: "include", headers, cache: "no-store" });
@@ -130,7 +102,7 @@ export async function downloadDocument(
 ) {
   const path = options.admin ? `/api/admin/documents/${id}/download` : `/api/documents/${id}/download`;
   const headers = new Headers();
-  applyAuthHeaders(headers, await bearerToken());
+  withAuthHeaders(headers, await bearerToken());
   let res: Response;
   try {
     res = await fetch(path, { credentials: "include", headers, cache: "no-store" });
