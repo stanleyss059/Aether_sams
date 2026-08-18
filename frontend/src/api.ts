@@ -13,16 +13,29 @@ export class ApiError extends Error {
 type Ok<T> = { success: true; data: T };
 type Fail = { success: false; error: { message: string; code: string } };
 
+async function bearerToken() {
+  const { data: sessionData } = await supabase.auth.getSession();
+  let session = sessionData.session;
+  if (!session) return null;
+
+  const expiresAtMs = (session.expires_at ?? 0) * 1000;
+  if (expiresAtMs > 0 && expiresAtMs < Date.now() + 60_000) {
+    const { data: refreshed, error } = await supabase.auth.refreshSession();
+    if (!error && refreshed.session) session = refreshed.session;
+  }
+
+  return session.access_token ?? null;
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (!isForm && options.body) headers.set("Content-Type", "application/json");
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
+  const token = await bearerToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   let res: Response;
   try {
-    res = await fetch(path, { ...options, credentials: "include", headers });
+    res = await fetch(path, { ...options, credentials: "include", headers, cache: "no-store" });
   } catch {
     throw new ApiError(
       "Could not reach the server. Check your connection and try again.",
@@ -46,7 +59,16 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
       res.status,
     );
   }
-  if (!json.success) throw new ApiError(json.error.message, json.error.code, res.status);
+  if (!json.success) {
+    if (json.error.code === "UNAUTHORIZED" && res.status === 401) {
+      await supabase.auth.signOut();
+    }
+    const message =
+      json.error.code === "UNAUTHORIZED"
+        ? "Your session expired. Please sign in again."
+        : json.error.message;
+    throw new ApiError(message, json.error.code, res.status);
+  }
   return json.data;
 }
 
@@ -71,12 +93,11 @@ export async function downloadDocument(
 ) {
   const path = options.admin ? `/api/admin/documents/${id}/download` : `/api/documents/${id}/download`;
   const headers = new Headers();
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
+  const token = await bearerToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   let res: Response;
   try {
-    res = await fetch(path, { credentials: "include", headers });
+    res = await fetch(path, { credentials: "include", headers, cache: "no-store" });
   } catch {
     throw new ApiError(
       "Could not reach the server. Check your connection and try again.",

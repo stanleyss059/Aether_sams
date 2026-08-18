@@ -29,10 +29,15 @@ function apiLoader() {
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  app.set("etag", false);
   if (config?.isProd) app.set("trust proxy", 1);
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json({ limit: "4mb" }));
+  app.use((_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
 
   app.get("/api/health", (_req, res) => {
     res.status(config ? 200 : 500).json({

@@ -20,7 +20,10 @@ async function hydrateUser(): Promise<User | null> {
   if (!data.session) return null;
   try {
     const me = await api<{ user: User | null }>("/api/auth/me");
-    if (!me.user) return null;
+    if (!me.user) {
+      await supabase.auth.signOut();
+      return null;
+    }
     if (me.user.suspendedAt) {
       await supabase.auth.signOut();
       throw new ApiError("Your account has been suspended.", "SUSPENDED", 403);
