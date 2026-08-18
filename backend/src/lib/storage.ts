@@ -18,6 +18,12 @@ function storageClient(accessToken?: string): SupabaseClient {
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }
+  if (resolved.isProd) {
+    throw Errors.serviceUnavailable(
+      "Storage uploads are not configured. Set SUPABASE_SERVICE_ROLE_KEY on the backend service, then redeploy.",
+      "STORAGE",
+    );
+  }
   return createClient(resolved.supabaseUrl, resolved.supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
@@ -52,6 +58,7 @@ export async function uploadUserFile(input: {
     upsert: false,
   });
   if (error) {
+    console.error("Supabase Storage upload failed:", error.message);
     const message = error.message.toLowerCase();
     if (message.includes("bucket") && message.includes("not found")) {
       throw Errors.serviceUnavailable(
@@ -59,9 +66,15 @@ export async function uploadUserFile(input: {
         "STORAGE",
       );
     }
-    if (message.includes("row-level security") || message.includes("unauthorized") || message.includes("403")) {
+    if (
+      !requireConfig().supabaseServiceRoleKey ||
+      message.includes("row-level security") ||
+      message.includes("unauthorized") ||
+      message.includes("invalid jwt") ||
+      message.includes("403")
+    ) {
       throw Errors.serviceUnavailable(
-        "Could not save the file to Storage. Add SUPABASE_SERVICE_ROLE_KEY, or allow uploads to the files bucket.",
+        "Could not save the file to Storage. Set SUPABASE_SERVICE_ROLE_KEY on the backend (Vercel → Environment Variables), then redeploy.",
         "STORAGE",
       );
     }
