@@ -1,12 +1,32 @@
 import path from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 
 type PdfParse = (buf: Buffer) => Promise<{ text: string }>;
 
+function appRoot() {
+  return path.dirname(fileURLToPath(import.meta.url));
+}
+
 function loadPdfParse(): PdfParse {
-  return require("pdf-parse/lib/pdf-parse.js") as PdfParse;
+  if (process.env.VERCEL) {
+    return require(path.join(appRoot(), "vercel-vendor", "pdf-parse")) as PdfParse;
+  }
+  return require("pdf-parse") as PdfParse;
+}
+
+type Mammoth = {
+  extractRawText: (input: { buffer: Buffer }) => Promise<{ value: string }>;
+};
+
+async function loadMammoth(): Promise<Mammoth> {
+  if (process.env.VERCEL) {
+    return require(path.join(appRoot(), "vercel-vendor", "mammoth")) as Mammoth;
+  }
+  const mod = await import("mammoth");
+  return mod.default;
 }
 
 export async function extractText(buffer: Buffer, mimeType: string, originalName: string): Promise<string> {
@@ -19,7 +39,7 @@ export async function extractText(buffer: Buffer, mimeType: string, originalName
     mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     ext === ".docx"
   ) {
-    const { default: mammoth } = await import("mammoth");
+    const mammoth = await loadMammoth();
     const result = await mammoth.extractRawText({ buffer });
     return clean(result.value);
   }

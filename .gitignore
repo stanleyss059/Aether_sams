@@ -2,6 +2,7 @@ node_modules
 dist
 .env
 backend/src/app.cjs
+backend/src/vercel-vendor
 *.db
 *.log
 backend/uploads

@@ -15,5 +15,10 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "backend" } },
     { "source": "/(.*)", "destination": { "service": "frontend" } }
-  ]
+  ],
+  "functions": {
+    "backend/src/app.cjs": {
+      "includeFiles": "backend/src/vercel-vendor/**"
+    }
+  }
 }
