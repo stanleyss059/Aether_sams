@@ -29,7 +29,7 @@ await esbuild.build({
     js: "const require_import_meta_url = require('node:url').pathToFileURL(__filename).href;",
   },
   footer: {
-    js: "module.exports = vercel_app_default; module.exports.maxDuration = 60;",
+    js: "module.exports = vercel_app_default; module.exports.maxDuration = 60; module.exports.config = { api: { bodyParser: false } };",
   },
   define: {
     "import.meta.url": "require_import_meta_url",

@@ -27,14 +27,49 @@ export function asyncHandler(fn: (req: Request, res: Response, next: NextFunctio
   };
 }
 
-export const attachSupabaseUser = asyncHandler(async (req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
+function headerValue(value: string | string[] | undefined) {
+  if (!value) return "";
+  return Array.isArray(value) ? value[0] ?? "" : value;
+}
+
+function tokenFromHeader(value: string) {
+  const raw = value.trim();
+  if (!raw) return "";
+  return raw.toLowerCase().startsWith("bearer ") ? raw.slice(7).trim() : raw;
+}
+
+export function readAccessToken(req: Request) {
+  const headerKeys = ["authorization", "x-aether-authorization", "x-authorization"];
+  for (const key of headerKeys) {
+    const token = tokenFromHeader(headerValue(req.headers[key]));
+    if (token) return token;
+  }
+
+  const scHeaders = headerValue(req.headers["x-vercel-sc-headers"]);
+  if (scHeaders) {
+    try {
+      const parsed = JSON.parse(scHeaders) as Record<string, unknown>;
+      const nested = parsed.Authorization ?? parsed.authorization ?? parsed["x-aether-authorization"];
+      if (typeof nested === "string") {
+        const token = tokenFromHeader(nested);
+        if (token) return token;
+      }
+    } catch {
+      // Ignore malformed Vercel header bags.
+    }
+  }
+
+  const bodyToken = typeof req.body?.accessToken === "string" ? req.body.accessToken : "";
+  return tokenFromHeader(bodyToken);
+}
+
+export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {
+  if (req.user) {
     next();
     return;
   }
 
-  const token = header.slice("Bearer ".length).trim();
+  const token = readAccessToken(req);
   if (!token) {
     next();
     return;
@@ -60,7 +95,7 @@ export const attachSupabaseUser = asyncHandler(async (req, res, next) => {
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) {
-    const hadToken = Boolean(req.headers.authorization?.startsWith("Bearer "));
+    const hadToken = Boolean(readAccessToken(req));
     next(
       hadToken
         ? new AppError(401, "Your session expired or could not be verified. Sign in again.", "UNAUTHORIZED")
