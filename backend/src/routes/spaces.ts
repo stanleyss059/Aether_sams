@@ -6,7 +6,14 @@ import { ownedSpace, serializeSpace, spaceInput, documentSummarySelect } from ".
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 export const spacesRouter = Router();
-spacesRouter.use(requireAuth);
+spacesRouter.use((req, res, next) => {
+  const path = `${req.originalUrl ?? ""} ${req.url ?? ""} ${req.path ?? ""}`.toLowerCase();
+  if (!path.includes("/spaces")) {
+    next();
+    return;
+  }
+  requireAuth(req, res, next);
+});
 
 spacesRouter.get(
   "/spaces",

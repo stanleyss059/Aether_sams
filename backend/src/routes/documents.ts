@@ -15,16 +15,23 @@ import {
 } from "../lib/documents-service.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
-function isPublicUpload(req: { method: string; path: string }) {
-  return (
-    req.method === "POST" &&
-    (req.path === "/documents/prepare" || req.path === "/documents/complete")
-  );
+function requestPath(req: { method?: string; path?: string; url?: string; originalUrl?: string }) {
+  return `${req.originalUrl ?? ""} ${req.url ?? ""} ${req.path ?? ""}`.toLowerCase();
+}
+
+function isPublicUpload(req: { method?: string; path?: string; url?: string; originalUrl?: string }) {
+  if (req.method !== "POST") return false;
+  const path = requestPath(req);
+  return path.includes("/documents/prepare") || path.includes("/documents/complete");
 }
 
 export const documentsRouter = Router();
 documentsRouter.use((req, res, next) => {
   if (isPublicUpload(req)) {
+    next();
+    return;
+  }
+  if (!requestPath(req).includes("/documents")) {
     next();
     return;
   }

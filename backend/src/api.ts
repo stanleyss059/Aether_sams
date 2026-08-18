@@ -10,9 +10,10 @@ import { attemptsRouter } from "./routes/attempts.js";
 export function createApiRouter(): Router {
   const api = Router();
   api.use((req, res, next) => {
+    const path = `${req.originalUrl ?? ""} ${req.url ?? ""} ${req.path ?? ""}`.toLowerCase();
     if (
       req.method === "POST" &&
-      (req.path === "/documents/prepare" || req.path === "/documents/complete")
+      (path.includes("/documents/prepare") || path.includes("/documents/complete"))
     ) {
       next();
       return;
@@ -21,7 +22,7 @@ export function createApiRouter(): Router {
   });
   api.use("/auth", authRouter);
   api.use("/admin", adminRouter);
-  api.use(spacesRouter, documentsRouter, quizzesRouter, attemptsRouter);
+  api.use(documentsRouter, spacesRouter, quizzesRouter, attemptsRouter);
   api.use(errorHandler);
   return api;
 }

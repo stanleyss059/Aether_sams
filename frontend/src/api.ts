@@ -37,6 +37,15 @@ function withAuthHeaders(headers: Headers, token: string | null) {
   headers.set("X-Aether-Authorization", `Bearer ${token}`);
 }
 
+export async function accessAuthHeaders() {
+  const headers: Record<string, string> = {};
+  const token = await bearerToken();
+  if (!token) return headers;
+  headers.Authorization = `Bearer ${token}`;
+  headers["X-Aether-Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;

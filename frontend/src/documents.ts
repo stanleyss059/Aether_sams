@@ -1,4 +1,4 @@
-import { ApiError } from "./api";
+import { ApiError, accessAuthHeaders } from "./api";
 
 export type DocumentSummary = {
   id: string;
@@ -54,12 +54,15 @@ async function parseJson<T>(res: Response): Promise<T> {
   return json.data;
 }
 
-async function jsonPost<T>(path: string, body: unknown, method = "POST"): Promise<T> {
+async function jsonPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
-    method,
+    method: "POST",
     credentials: "include",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(await accessAuthHeaders()),
+    },
     body: JSON.stringify(body),
   });
   return parseJson<T>(res);
