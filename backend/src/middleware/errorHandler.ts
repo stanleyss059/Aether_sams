@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import multer from "multer";
 import { writeAudit } from "../lib/audit.js";
+import { readAccessToken } from "../lib/auth-token.js";
 import { AppError, Errors } from "../lib/errors.js";
 import { ensureLocalUser, type AppUser, supabaseAuth } from "../lib/supabase.js";
 
@@ -25,42 +26,6 @@ export function asyncHandler(fn: (req: Request, res: Response, next: NextFunctio
   return (req: Request, res: Response, next: NextFunction) => {
     void fn(req, res, next).catch(next);
   };
-}
-
-function headerValue(value: string | string[] | undefined) {
-  if (!value) return "";
-  return Array.isArray(value) ? value[0] ?? "" : value;
-}
-
-function tokenFromHeader(value: string) {
-  const raw = value.trim();
-  if (!raw) return "";
-  return raw.toLowerCase().startsWith("bearer ") ? raw.slice(7).trim() : raw;
-}
-
-export function readAccessToken(req: Request) {
-  const headerKeys = ["authorization", "x-aether-authorization", "x-authorization"];
-  for (const key of headerKeys) {
-    const token = tokenFromHeader(headerValue(req.headers[key]));
-    if (token) return token;
-  }
-
-  const scHeaders = headerValue(req.headers["x-vercel-sc-headers"]);
-  if (scHeaders) {
-    try {
-      const parsed = JSON.parse(scHeaders) as Record<string, unknown>;
-      const nested = parsed.Authorization ?? parsed.authorization ?? parsed["x-aether-authorization"];
-      if (typeof nested === "string") {
-        const token = tokenFromHeader(nested);
-        if (token) return token;
-      }
-    } catch {
-      // Ignore malformed Vercel header bags.
-    }
-  }
-
-  const bodyToken = typeof req.body?.accessToken === "string" ? req.body.accessToken : "";
-  return tokenFromHeader(bodyToken);
 }
 
 export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {

@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
-import { api, ApiError, requireAccessToken, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
+import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
+import { uploadDocument } from "./upload";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 
@@ -88,28 +89,11 @@ export function SpacePage() {
     setBusy(true);
     setError("");
     try {
-      await requireAccessToken();
-      // Extract PDF/DOCX on the server. Client-side pdf.js breaks on many iOS Safari
-      // versions ("Iterator" / GlobalWorkerOptions errors).
-      const body = new FormData();
-      body.append("file", file, file.name);
-      body.append("spaceId", id);
-      body.append("title", file.name.replace(/\.[^.]+$/, "") || file.name);
-      const created = await api<{ id: string }>("/api/documents", { method: "POST", body });
+      const created = await uploadDocument({ file, spaceId: id });
       await load();
       void waitForNotes(created.id);
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.";
-      if (!(err instanceof ApiError)) {
-        void api("/api/documents/failures", {
-          method: "POST",
-          body: JSON.stringify({ filename: file.name, fileSize: file.size, errorMessage: message }),
-        }).catch(() => {
-          // Reporting must never replace the upload error shown to the user.
-        });
-      }
-      setError(message);
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
