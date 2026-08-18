@@ -15,8 +15,18 @@ import {
 
 const uploadFieldsSchema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
-  spaceId: z.string().trim().min(1).optional(),
+  spaceId: z.string().trim().min(1),
 });
+
+async function resolveUploadOwner(rawFields: unknown) {
+  const fields = uploadFieldsSchema.parse(rawFields);
+  const space = await prisma.space.findUnique({
+    where: { id: fields.spaceId },
+    select: { id: true, userId: true },
+  });
+  if (!space) throw Errors.notFound("Space not found.");
+  return { userId: space.userId, spaceId: space.id, title: fields.title };
+}
 
 const moveSchema = z.object({
   spaceId: z.string().min(1).nullable(),
@@ -103,14 +113,8 @@ export async function getUserDocument(userId: string, id: string) {
   };
 }
 
-export async function createUserDocument(
-  userId: string,
-  file: Express.Multer.File,
-  rawFields: unknown,
-  accessToken?: string,
-) {
-  const fields = uploadFieldsSchema.parse(rawFields);
-  if (fields.spaceId) await ownedSpace(userId, fields.spaceId);
+export async function createUserDocument(file: Express.Multer.File, rawFields: unknown) {
+  const { userId, spaceId, title: requestedTitle } = await resolveUploadOwner(rawFields);
 
   const mimeType = mimeTypeFor(file.originalname, file.mimetype);
   let text: string;
@@ -130,16 +134,15 @@ export async function createUserDocument(
     filename: file.originalname,
     mimeType,
     buffer: file.buffer,
-    accessToken,
   });
 
-  const title = fields.title ?? file.originalname;
+  const title = requestedTitle ?? file.originalname;
   try {
     const document = await prisma.document.create({
       data: {
         id,
         userId,
-        spaceId: fields.spaceId ?? null,
+        spaceId,
         title,
         filename: file.originalname,
         mimeType,
@@ -149,9 +152,7 @@ export async function createUserDocument(
       },
     });
 
-    if (fields.spaceId) {
-      await prisma.space.update({ where: { id: fields.spaceId }, data: { updatedAt: new Date() } });
-    }
+    await prisma.space.update({ where: { id: spaceId }, data: { updatedAt: new Date() } });
 
     if (process.env.VERCEL) void queueDocumentNotes(document);
     else await queueDocumentNotes(document);
@@ -163,7 +164,7 @@ export async function createUserDocument(
       fileUrl: document.fileUrl,
     };
   } catch (error) {
-    await removeStoredFile(stored.storagePath, accessToken);
+    await removeStoredFile(stored.storagePath);
     throw error;
   }
 }

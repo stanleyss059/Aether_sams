@@ -14,7 +14,7 @@ import {
 } from "../lib/documents-service.js";
 import { Errors } from "../lib/errors.js";
 import { fileUpload } from "../lib/upload.js";
-import { asyncHandler, attachSupabaseUser, auditFailures, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 function uploadSingle(field: string) {
   return (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
@@ -52,12 +52,10 @@ documentsRouter.post(
     }),
   }),
   uploadSingle("file"),
-  attachSupabaseUser,
-  requireAuth,
   asyncHandler(async (req, res) => {
     if (!req.file) throw Errors.validation("Choose a file to upload.");
 
-    const data = await createUserDocument(req.user!.id, req.file, req.body, readAccessToken(req));
+    const data = await createUserDocument(req.file, req.body);
     logAudit({
       req,
       action: "document.create",
