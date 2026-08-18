@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type DocListItem } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
-import { FileBadge, SaveDocumentButton } from "./FileBadge";
+import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 
 export function UploadsPage() {
   const [docs, setDocs] = useState<DocListItem[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [notingId, setNotingId] = useState<string | null>(null);
   const [pending, setPending] = useState<DocListItem | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api<DocListItem[]>("/api/documents")
@@ -17,6 +19,24 @@ export function UploadsPage() {
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  async function generateNotes(docId: string, openAfter = false) {
+    setNotingId(docId);
+    setError("");
+    try {
+      const data = await api<{ id: string; summary: string }>(`/api/documents/${docId}/notes`, {
+        method: "POST",
+      });
+      setDocs((current) =>
+        current.map((doc) => (doc.id === docId ? { ...doc, summary: data.summary } : doc)),
+      );
+      if (openAfter) navigate(`/documents/${docId}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not generate notes from that upload.");
+    } finally {
+      setNotingId(null);
+    }
+  }
 
   async function confirmRemove() {
     if (!pending) return;
@@ -80,6 +100,12 @@ export function UploadsPage() {
                 >
                   {doc.latestQuizId ? "Attempt quiz" : "Generate quiz"}
                 </Link>
+                <ViewNoteButton
+                  documentId={doc.id}
+                  hasNotes={Boolean(doc.summary?.trim())}
+                  generating={notingId === doc.id}
+                  onGenerate={() => generateNotes(doc.id, true)}
+                />
                 <SaveDocumentButton documentId={doc.id} filename={doc.filename} />
                 <button
                   type="button"

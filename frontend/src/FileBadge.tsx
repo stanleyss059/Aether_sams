@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { ApiError, downloadDocument } from "./api";
 
 const STYLES: Record<string, string> = {
@@ -55,6 +56,41 @@ export function SaveDocumentButton({
   return (
     <button type="button" className={className} disabled={busy} onClick={onDownload}>
       {busy ? "Saving…" : "Save"}
+    </button>
+  );
+}
+
+const VIEW_NOTE_CLASS =
+  "rounded-lg border border-forest/40 px-4 py-2 text-center text-sm font-semibold text-forest no-underline hover:bg-forest/5 disabled:opacity-60";
+
+export function ViewNoteButton({
+  documentId,
+  hasNotes,
+  generating = false,
+  onGenerate,
+}: {
+  documentId: string;
+  hasNotes: boolean;
+  generating?: boolean;
+  onGenerate?: () => void;
+}) {
+  if (generating) {
+    return (
+      <button type="button" className={VIEW_NOTE_CLASS} disabled>
+        Generating notes…
+      </button>
+    );
+  }
+  if (hasNotes) {
+    return (
+      <Link to={`/documents/${documentId}`} className={VIEW_NOTE_CLASS}>
+        View note
+      </Link>
+    );
+  }
+  return (
+    <button type="button" className={VIEW_NOTE_CLASS} onClick={onGenerate}>
+      View note
     </button>
   );
 }

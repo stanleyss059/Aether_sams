@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
-import { FileBadge, SaveDocumentButton } from "./FileBadge";
+import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 
 type PendingDelete =
   | { kind: "space" }
@@ -23,6 +23,7 @@ export function SpacePage() {
   const [description, setDescription] = useState("");
   const [accent, setAccent] = useState<Accent>("forest");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [notingId, setNotingId] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingDelete | null>(null);
 
   async function load() {
@@ -92,8 +93,9 @@ export function SpacePage() {
       body.append("file", file, file.name);
       body.append("spaceId", id);
       body.append("title", file.name.replace(/\.[^.]+$/, "") || file.name);
-      await api("/api/documents", { method: "POST", body });
+      const created = await api<{ id: string }>("/api/documents", { method: "POST", body });
       await load();
+      void generateNotes(created.id);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.";
@@ -109,6 +111,31 @@ export function SpacePage() {
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function generateNotes(docId: string, openAfter = false) {
+    setNotingId(docId);
+    setError("");
+    try {
+      const data = await api<{ id: string; summary: string }>(`/api/documents/${docId}/notes`, {
+        method: "POST",
+      });
+      setSpace((current) =>
+        current
+          ? {
+              ...current,
+              documents: current.documents.map((doc) =>
+                doc.id === docId ? { ...doc, summary: data.summary } : doc,
+              ),
+            }
+          : current,
+      );
+      if (openAfter) navigate(`/documents/${docId}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not generate notes from that upload.");
+    } finally {
+      setNotingId(null);
     }
   }
 
@@ -199,7 +226,7 @@ export function SpacePage() {
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            {busy && !editing ? "Preparing upload…" : "Upload"}
+            {busy && !editing ? "Uploading…" : "Upload"}
           </button>
           <button
             type="button"
@@ -336,6 +363,12 @@ export function SpacePage() {
                         ? "New quiz"
                         : "Generate quiz"}
                   </button>
+                  <ViewNoteButton
+                    documentId={doc.id}
+                    hasNotes={Boolean(doc.summary?.trim())}
+                    generating={notingId === doc.id}
+                    onGenerate={() => generateNotes(doc.id, true)}
+                  />
                   <SaveDocumentButton documentId={doc.id} filename={doc.filename} />
                   <button
                     type="button"

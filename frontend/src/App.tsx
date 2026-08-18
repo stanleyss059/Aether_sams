@@ -1,9 +1,10 @@
 import { Navigate, Outlet, Route, Routes, Link, useNavigate, useParams } from "react-router-dom";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { api, ApiError, type DocDetail } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { SaveDocumentButton } from "./FileBadge";
+import { StudyNotes } from "./StudyNotes";
 import { DashboardPage } from "./DashboardPage";
 import { NavBar } from "./NavBar";
 import { OnboardingGuide } from "./OnboardingGuide";
@@ -198,7 +199,9 @@ function DocumentPage() {
   const [doc, setDoc] = useState<DocDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notesBusy, setNotesBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const notesRequested = useRef("");
 
   async function load() {
     if (!id) return;
@@ -206,8 +209,24 @@ function DocumentPage() {
   }
 
   useEffect(() => {
+    notesRequested.current = "";
     load().catch((err: Error) => setError(err.message));
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !doc || doc.summary.trim() || notesRequested.current === id) return;
+    notesRequested.current = id;
+    setNotesBusy(true);
+    api<{ summary: string }>(`/api/documents/${id}/notes`, { method: "POST" })
+      .then((data) => {
+        setDoc((current) => (current ? { ...current, summary: data.summary } : current));
+      })
+      .catch((err: Error) => {
+        notesRequested.current = "";
+        setError(err instanceof ApiError ? err.message : "Could not generate notes.");
+      })
+      .finally(() => setNotesBusy(false));
+  }, [id, doc]);
 
   async function generate() {
     setBusy(true);
@@ -290,16 +309,7 @@ function DocumentPage() {
           Remove upload
         </button>
       </div>
-      {doc.summary ? (
-        <section className="rounded-xl border border-line bg-white p-5">
-          <h2 className="font-serif text-xl">Study notes</h2>
-          <p className="mt-2 whitespace-pre-wrap leading-relaxed text-ink">{doc.summary}</p>
-        </section>
-      ) : null}
-      <section className="rounded-xl border border-line bg-white p-5">
-        <h2 className="font-serif text-xl">Extracted excerpt</h2>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{doc.excerpt}</p>
-      </section>
+      <StudyNotes notes={doc.summary} loading={notesBusy && !doc.summary.trim()} />
       <section>
         <h2 className="font-serif text-xl">Quizzes</h2>
         <div className="mt-3 grid gap-2">

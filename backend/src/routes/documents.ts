@@ -7,7 +7,7 @@ import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { logAudit, writeAudit } from "../lib/audit.js";
 import { extractText } from "../lib/extract.js";
-import { generateQuizFromText } from "../lib/ai.js";
+import { generateNotesFromText, generateQuizFromText } from "../lib/ai.js";
 import { attachmentFilename, textDownloadFilename } from "../lib/download.js";
 import { ownedDocument, ownedSpace } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
@@ -298,6 +298,27 @@ documentsRouter.patch(
   }),
 );
 
+documentsRouter.post(
+  "/documents/:id/notes",
+  auditFailures("document.notes", "document", { entityId: (req) => req.params.id }),
+  asyncHandler(async (req, res) => {
+    const document = await ownedDocument(req.user!.id, req.params.id);
+    const notes = await generateNotesFromText(document.title, document.extractedText);
+    const updated = await prisma.document.update({
+      where: { id: document.id },
+      data: { summary: notes },
+    });
+    logAudit({
+      req,
+      action: "document.notes",
+      entityType: "document",
+      entityId: updated.id,
+      metadata: { title: updated.title, noteLength: notes.length },
+    });
+    res.json({ success: true, data: { id: updated.id, summary: updated.summary } });
+  }),
+);
+
 documentsRouter.delete(
   "/documents/:id",
   auditFailures("document.delete", "document", { entityId: (req) => req.params.id }),
@@ -329,7 +350,9 @@ documentsRouter.post(
     const document = await ownedDocument(req.user!.id, req.params.id);
     const generated = await generateQuizFromText(document.title, document.extractedText, count);
     const quiz = await prisma.$transaction(async (tx) => {
-      await tx.document.update({ where: { id: document.id }, data: { summary: generated.summary } });
+      if (!document.summary.trim()) {
+        await tx.document.update({ where: { id: document.id }, data: { summary: generated.summary } });
+      }
       return tx.quiz.create({
         data: {
           documentId: document.id,
