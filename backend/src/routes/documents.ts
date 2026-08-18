@@ -11,7 +11,7 @@ import { generateNotesFromText, generateQuizFromText } from "../lib/ai.js";
 import { queueDocumentNotes } from "../lib/notes.js";
 import { sendDocumentDownload } from "../lib/download.js";
 import { ownedDocument, ownedDocumentForDownload, ownedSpace, documentSummarySelect } from "../lib/study.js";
-import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, attachSupabaseUser, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 const MAX_DECOMPRESSED_BYTES = 25 * 1024 * 1024;
@@ -25,7 +25,7 @@ const allowedTypes = new Map([
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 6 },
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 8 },
   fileFilter: (_req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();
     const expectedType = allowedTypes.get(extension);
@@ -39,7 +39,13 @@ const upload = multer({
 });
 
 export const documentsRouter = Router();
-documentsRouter.use(requireAuth);
+documentsRouter.use((req, res, next) => {
+  if (req.method === "POST" && req.path === "/documents") {
+    next();
+    return;
+  }
+  requireAuth(req, res, next);
+});
 
 documentsRouter.get(
   "/documents",
@@ -86,6 +92,8 @@ documentsRouter.post(
     }),
   }),
   upload.single("file"),
+  attachSupabaseUser,
+  requireAuth,
   asyncHandler(async (req, res) => {
     if (!req.file) throw Errors.validation("Choose a file to upload.");
     const metadata = z

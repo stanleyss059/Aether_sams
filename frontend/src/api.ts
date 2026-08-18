@@ -54,12 +54,22 @@ export async function requireAccessToken() {
   return token;
 }
 
+function applyAuthHeaders(headers: Headers, token: string | null, body?: RequestInit["body"]) {
+  if (!token) return;
+  headers.set("Authorization", `Bearer ${token}`);
+  // Vercel production often strips Authorization; this custom header survives the proxy.
+  headers.set("X-Aether-Authorization", `Bearer ${token}`);
+  if (typeof FormData !== "undefined" && body instanceof FormData && !body.has("accessToken")) {
+    body.append("accessToken", token);
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (!isForm && options.body) headers.set("Content-Type", "application/json");
   const token = await bearerToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  applyAuthHeaders(headers, token, options.body);
   let res: Response;
   try {
     res = await fetch(path, { ...options, credentials: "include", headers, cache: "no-store" });
@@ -120,8 +130,7 @@ export async function downloadDocument(
 ) {
   const path = options.admin ? `/api/admin/documents/${id}/download` : `/api/documents/${id}/download`;
   const headers = new Headers();
-  const token = await bearerToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  applyAuthHeaders(headers, await bearerToken());
   let res: Response;
   try {
     res = await fetch(path, { credentials: "include", headers, cache: "no-store" });

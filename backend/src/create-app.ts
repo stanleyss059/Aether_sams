@@ -32,8 +32,21 @@ export function createApp() {
   app.set("etag", false);
   if (config?.isProd) app.set("trust proxy", 1);
   app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors({ origin: true, credentials: true }));
-  app.use(express.json({ limit: "4mb" }));
+  app.use(
+    cors({
+      origin: true,
+      credentials: true,
+      allowedHeaders: ["Authorization", "Content-Type", "X-Aether-Authorization", "X-Authorization"],
+    }),
+  );
+  const jsonParser = express.json({ limit: "4mb" });
+  app.use((req, res, next) => {
+    if (req.is("multipart/form-data")) {
+      next();
+      return;
+    }
+    jsonParser(req, res, next);
+  });
   app.use((_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     next();

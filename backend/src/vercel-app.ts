@@ -1,3 +1,5 @@
 import { createApp } from "./create-app.js";
 
-export default createApp();
+const app = createApp();
+export default app;
+export const config = { api: { bodyParser: false as const } };
