@@ -16,15 +16,22 @@ type Fail = { success: false; error: { message: string; code: string } };
 async function bearerToken() {
   const { data: sessionData } = await supabase.auth.getSession();
   let session = sessionData.session;
+  console.log("🔍 Auth Debug - Session exists:", !!session);
   if (!session) return null;
 
   const expiresAtMs = (session.expires_at ?? 0) * 1000;
-  if (expiresAtMs > 0 && expiresAtMs < Date.now() + 60_000) {
+  const isExpiringSoon = expiresAtMs > 0 && expiresAtMs < Date.now() + 60_000;
+  console.log("🔍 Auth Debug - Token expiring soon:", isExpiringSoon, "expiresAt:", new Date(expiresAtMs).toISOString());
+  
+  if (isExpiringSoon) {
     const { data: refreshed, error } = await supabase.auth.refreshSession();
+    console.log("🔍 Auth Debug - Refresh attempt - error:", !!error, "new session:", !!refreshed.session);
     if (!error && refreshed.session) session = refreshed.session;
   }
 
-  return session.access_token ?? null;
+  const token = session.access_token ?? null;
+  console.log("🔍 Auth Debug - Token length:", token?.length || 0);
+  return token;
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

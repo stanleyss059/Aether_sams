@@ -29,16 +29,25 @@ export function asyncHandler(fn: (req: Request, res: Response, next: NextFunctio
 
 export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {
   const header = req.headers.authorization;
+  console.log("🔍 Backend Auth Debug - Authorization header:", header ? `Bearer ${header.slice(7, 20)}...` : "missing");
+  
   if (header?.startsWith("Bearer ")) {
     const token = header.slice("Bearer ".length).trim();
+    console.log("🔍 Backend Auth Debug - Token length:", token.length);
+    
     if (token) {
       try {
         const { data, error } = await supabaseAuth.auth.getUser(token);
+        console.log("🔍 Backend Auth Debug - Supabase validation - error:", !!error, "user:", !!data.user);
+        
         if (!error && data.user) {
           req.user = await ensureLocalUser(data.user);
+          console.log("🔍 Backend Auth Debug - User attached:", req.user?.id, req.user?.email);
+        } else if (error) {
+          console.error("🔍 Backend Auth Debug - Supabase error:", error.message);
         }
       } catch (error) {
-        console.error("attachSupabaseUser failed:", error);
+        console.error("🔍 Backend Auth Debug - attachSupabaseUser failed:", error);
         throw error;
       }
     }
