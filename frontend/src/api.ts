@@ -245,6 +245,7 @@ export type DocListItem = {
   title: string;
   filename: string;
   summary: string;
+  fileUrl?: string | null;
   createdAt: string;
   quizCount: number;
   latestQuizId: string | null;
@@ -258,6 +259,7 @@ export type DocDetail = {
   filename: string;
   summary: string;
   excerpt: string;
+  fileUrl?: string | null;
   createdAt: string;
   space: { id: string; title: string; courseCode: string } | null;
   quizzes: QuizSummary[];

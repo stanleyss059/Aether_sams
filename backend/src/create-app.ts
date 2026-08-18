@@ -63,6 +63,7 @@ export function createApp() {
           DIRECT_URL: Boolean(process.env.DIRECT_URL),
           SUPABASE_URL: Boolean(process.env.SUPABASE_URL),
           SUPABASE_ANON_KEY: Boolean(process.env.SUPABASE_ANON_KEY),
+          SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
           OPENAI_API_KEY: Boolean(process.env.OPENAI_API_KEY),
           FRONTEND_URL: Boolean(process.env.FRONTEND_URL),
         },

@@ -5,6 +5,7 @@ export type DocumentSummary = {
   id: string;
   title: string;
   filename: string;
+  fileUrl?: string | null;
 };
 
 export type UploadInput = {

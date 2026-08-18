@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { logAudit } from "../lib/audit.js";
+import { readAccessToken } from "../lib/auth-token.js";
 import { sendDocumentDownload } from "../lib/download.js";
 import {
   createUserDocument,
@@ -56,7 +57,7 @@ documentsRouter.post(
   asyncHandler(async (req, res) => {
     if (!req.file) throw Errors.validation("Choose a file to upload.");
 
-    const data = await createUserDocument(req.user!.id, req.file, req.body);
+    const data = await createUserDocument(req.user!.id, req.file, req.body, readAccessToken(req));
     logAudit({
       req,
       action: "document.create",
@@ -72,7 +73,7 @@ documentsRouter.get(
   "/documents/:id/download",
   asyncHandler(async (req, res) => {
     const document = await downloadUserDocument(req.user!.id, req.params.id);
-    sendDocumentDownload(res, document);
+    await sendDocumentDownload(res, document, readAccessToken(req));
   }),
 );
 
@@ -125,7 +126,7 @@ documentsRouter.delete(
   "/documents/:id",
   auditFailures("document.delete", "document", { entityId: (req) => req.params.id }),
   asyncHandler(async (req, res) => {
-    const data = await deleteUserDocument(req.user!.id, req.params.id);
+    const data = await deleteUserDocument(req.user!.id, req.params.id, readAccessToken(req));
     logAudit({
       req,
       action: "document.delete",

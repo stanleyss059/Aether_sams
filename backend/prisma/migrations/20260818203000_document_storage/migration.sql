@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Document" ADD COLUMN "storagePath" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Document" ADD COLUMN "fileUrl" TEXT NOT NULL DEFAULT '';

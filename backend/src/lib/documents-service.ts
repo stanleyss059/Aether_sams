@@ -5,6 +5,7 @@ import { extractText } from "./extract.js";
 import { generateNotesFromText, generateQuizFromText } from "./ai.js";
 import { queueDocumentNotes } from "./notes.js";
 import { mimeTypeFor } from "./upload.js";
+import { newDocumentId, removeStoredFile, uploadUserFile } from "./storage.js";
 import {
   documentSummarySelect,
   ownedDocument,
@@ -28,6 +29,7 @@ function serializeListItem(document: {
   title: string;
   filename: string;
   summary: string;
+  fileUrl: string;
   createdAt: Date;
   spaceId: string | null;
   space: { id: string; title: string; courseCode: string } | null;
@@ -39,6 +41,7 @@ function serializeListItem(document: {
     title: document.title,
     filename: document.filename,
     summary: document.summary,
+    fileUrl: document.fileUrl || null,
     createdAt: document.createdAt,
     quizCount: document._count.quizzes,
     latestQuizId: document.quizzes[0]?.id ?? null,
@@ -87,6 +90,7 @@ export async function getUserDocument(userId: string, id: string) {
     filename: document.filename,
     summary: document.summary,
     excerpt: document.extractedText.slice(0, 1200),
+    fileUrl: document.fileUrl || null,
     createdAt: document.createdAt,
     space: document.space,
     quizzes: document.quizzes.map((quiz) => ({
@@ -103,6 +107,7 @@ export async function createUserDocument(
   userId: string,
   file: Express.Multer.File,
   rawFields: unknown,
+  accessToken?: string,
 ) {
   const fields = uploadFieldsSchema.parse(rawFields);
   if (fields.spaceId) await ownedSpace(userId, fields.spaceId);
@@ -118,27 +123,49 @@ export async function createUserDocument(
     throw Errors.validation("That file does not contain enough readable text to study from.");
   }
 
-  const title = fields.title ?? file.originalname;
-  const document = await prisma.document.create({
-    data: {
-      userId,
-      spaceId: fields.spaceId ?? null,
-      title,
-      filename: file.originalname,
-      mimeType,
-      extractedText: text,
-      fileData: Uint8Array.from(file.buffer),
-    },
+  const id = newDocumentId();
+  const stored = await uploadUserFile({
+    userId,
+    documentId: id,
+    filename: file.originalname,
+    mimeType,
+    buffer: file.buffer,
+    accessToken,
   });
 
-  if (fields.spaceId) {
-    await prisma.space.update({ where: { id: fields.spaceId }, data: { updatedAt: new Date() } });
+  const title = fields.title ?? file.originalname;
+  try {
+    const document = await prisma.document.create({
+      data: {
+        id,
+        userId,
+        spaceId: fields.spaceId ?? null,
+        title,
+        filename: file.originalname,
+        mimeType,
+        extractedText: text,
+        storagePath: stored.storagePath,
+        fileUrl: stored.fileUrl,
+      },
+    });
+
+    if (fields.spaceId) {
+      await prisma.space.update({ where: { id: fields.spaceId }, data: { updatedAt: new Date() } });
+    }
+
+    if (process.env.VERCEL) void queueDocumentNotes(document);
+    else await queueDocumentNotes(document);
+
+    return {
+      id: document.id,
+      title: document.title,
+      filename: document.filename,
+      fileUrl: document.fileUrl,
+    };
+  } catch (error) {
+    await removeStoredFile(stored.storagePath, accessToken);
+    throw error;
   }
-
-  if (process.env.VERCEL) void queueDocumentNotes(document);
-  else await queueDocumentNotes(document);
-
-  return { id: document.id, title: document.title, filename: document.filename };
 }
 
 export async function moveUserDocument(userId: string, id: string, rawBody: unknown) {
@@ -158,9 +185,10 @@ export async function moveUserDocument(userId: string, id: string, rawBody: unkn
   return { id: updated.id, spaceId: updated.spaceId };
 }
 
-export async function deleteUserDocument(userId: string, id: string) {
+export async function deleteUserDocument(userId: string, id: string, accessToken?: string) {
   const document = await ownedDocument(userId, id);
   await prisma.document.delete({ where: { id: document.id } });
+  await removeStoredFile(document.storagePath, accessToken);
   if (document.spaceId) {
     await prisma.space.update({ where: { id: document.spaceId }, data: { updatedAt: new Date() } });
   }

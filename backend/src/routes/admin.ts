@@ -3,7 +3,9 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { writeAudit } from "../lib/audit.js";
+import { readAccessToken } from "../lib/auth-token.js";
 import { sendDocumentDownload } from "../lib/download.js";
+import { removeStoredFile } from "../lib/storage.js";
 import { asyncHandler, auditFailures, requireAuth, requireAdmin } from "../middleware/errorHandler.js";
 
 export const adminRouter = Router();
@@ -246,7 +248,7 @@ adminRouter.get(
   asyncHandler(async (req, res) => {
     const document = await prisma.document.findUnique({ where: { id: req.params.id } });
     if (!document) throw Errors.notFound("Document not found.");
-    sendDocumentDownload(res, document);
+    await sendDocumentDownload(res, document, readAccessToken(req));
   }),
 );
 
@@ -280,6 +282,7 @@ adminRouter.delete(
       });
       await tx.document.delete({ where: { id: document.id } });
     });
+    await removeStoredFile(document.storagePath, readAccessToken(req));
 
     res.json({ success: true, data: { id: document.id } });
   }),
