@@ -6,17 +6,13 @@ import * as esbuild from "esbuild";
 const root = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.join(root, "..");
 const vendorDir = path.join(backendRoot, "src", "vercel-vendor");
-const runtimeDeps = ["pdf-parse", "mammoth"];
+const pdfParseEntry = path.join(backendRoot, "node_modules", "pdf-parse", "lib", "pdf-parse.js");
 
-// Keep heavy parsers out of app.cjs; copy them beside the function entry instead.
 fs.rmSync(vendorDir, { recursive: true, force: true });
-fs.mkdirSync(vendorDir, { recursive: true });
-for (const dep of runtimeDeps) {
-  fs.cpSync(path.join(backendRoot, "node_modules", dep), path.join(vendorDir, dep), { recursive: true });
-}
 
-// Bundle app code; externalize prisma + the copied parser packages.
-const external = ["@prisma/client", "prisma", ...runtimeDeps];
+if (!fs.existsSync(pdfParseEntry)) {
+  throw new Error("pdf-parse is not installed. Run npm install in backend/.");
+}
 
 await esbuild.build({
   entryPoints: [path.join(backendRoot, "src", "vercel-app.ts")],
@@ -24,7 +20,10 @@ await esbuild.build({
   platform: "node",
   format: "cjs",
   outfile: path.join(backendRoot, "src", "app.cjs"),
-  external,
+  external: ["@prisma/client", "prisma"],
+  alias: {
+    "pdf-parse": pdfParseEntry,
+  },
   banner: {
     js: "const require_import_meta_url = require('node:url').pathToFileURL(__filename).href;",
   },

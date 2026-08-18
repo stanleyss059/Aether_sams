@@ -12,7 +12,6 @@
       "buildCommand": "npm run build:vercel",
       "functions": {
         "src/app.cjs": {
-          "includeFiles": "src/vercel-vendor/**",
           "maxDuration": 60
         }
       }
