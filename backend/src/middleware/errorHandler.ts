@@ -27,37 +27,45 @@ export function asyncHandler(fn: (req: Request, res: Response, next: NextFunctio
   };
 }
 
-export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {
+export const attachSupabaseUser = asyncHandler(async (req, res, next) => {
   const header = req.headers.authorization;
-  console.log("🔍 Backend Auth Debug - Authorization header:", header ? `Bearer ${header.slice(7, 20)}...` : "missing");
-  
-  if (header?.startsWith("Bearer ")) {
-    const token = header.slice("Bearer ".length).trim();
-    console.log("🔍 Backend Auth Debug - Token length:", token.length);
-    
-    if (token) {
-      try {
-        const { data, error } = await supabaseAuth.auth.getUser(token);
-        console.log("🔍 Backend Auth Debug - Supabase validation - error:", !!error, "user:", !!data.user);
-        
-        if (!error && data.user) {
-          req.user = await ensureLocalUser(data.user);
-          console.log("🔍 Backend Auth Debug - User attached:", req.user?.id, req.user?.email);
-        } else if (error) {
-          console.error("🔍 Backend Auth Debug - Supabase error:", error.message);
-        }
-      } catch (error) {
-        console.error("🔍 Backend Auth Debug - attachSupabaseUser failed:", error);
-        throw error;
-      }
-    }
+  if (!header?.startsWith("Bearer ")) {
+    next();
+    return;
   }
+
+  const token = header.slice("Bearer ".length).trim();
+  if (!token) {
+    next();
+    return;
+  }
+
+  const { data, error } = await supabaseAuth.auth.getUser(token);
+  if (error || !data.user) {
+    console.error("Supabase token rejected:", error?.message ?? "unknown error");
+    next();
+    return;
+  }
+
+  try {
+    req.user = await ensureLocalUser(data.user);
+  } catch (syncError) {
+    console.error("Failed to sync Supabase user to database:", syncError);
+    next(Errors.serviceUnavailable("Could not load your account. Try again in a moment.", "DATABASE"));
+    return;
+  }
+
   next();
 });
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) {
-    next(Errors.unauthorized());
+    const hadToken = Boolean(req.headers.authorization?.startsWith("Bearer "));
+    next(
+      hadToken
+        ? new AppError(401, "Your session expired or could not be verified. Sign in again.", "UNAUTHORIZED")
+        : Errors.unauthorized(),
+    );
     return;
   }
   if (req.user.suspendedAt) {

@@ -17,24 +17,40 @@ function isFail<T>(result: Ok<T> | Fail): result is Fail {
   return !result.success;
 }
 
-async function bearerToken() {
-  const { data: sessionData } = await supabase.auth.getSession();
-  let session = sessionData.session;
-  console.log("🔍 Auth Debug - Session exists:", !!session);
-  if (!session) return null;
+function sessionExpiresAtMs(session: { expires_at?: number | null }) {
+  return (session.expires_at ?? 0) * 1000;
+}
 
-  const expiresAtMs = (session.expires_at ?? 0) * 1000;
-  const isExpiringSoon = expiresAtMs > 0 && expiresAtMs < Date.now() + 60_000;
-  console.log("🔍 Auth Debug - Token expiring soon:", isExpiringSoon, "expiresAt:", new Date(expiresAtMs).toISOString());
-  
-  if (isExpiringSoon) {
-    const { data: refreshed, error } = await supabase.auth.refreshSession();
-    console.log("🔍 Auth Debug - Refresh attempt - error:", !!error, "new session:", !!refreshed.session);
-    if (!error && refreshed.session) session = refreshed.session;
+function sessionNeedsRefresh(session: { expires_at?: number | null }) {
+  const expiresAtMs = sessionExpiresAtMs(session);
+  if (expiresAtMs <= 0) return true;
+  return expiresAtMs < Date.now() + 60_000;
+}
+
+async function bearerToken() {
+  let { data: sessionData } = await supabase.auth.getSession();
+  let session = sessionData.session;
+
+  if (!session || sessionNeedsRefresh(session)) {
+    const refreshed = await supabase.auth.refreshSession();
+    session = refreshed.data.session ?? null;
   }
 
-  const token = session.access_token ?? null;
-  console.log("🔍 Auth Debug - Token length:", token?.length || 0);
+  if (!session?.access_token) {
+    const { data: userData, error } = await supabase.auth.getUser();
+    if (error || !userData.user) return null;
+    ({ data: sessionData } = await supabase.auth.getSession());
+    session = sessionData.session;
+  }
+
+  return session?.access_token ?? null;
+}
+
+export async function requireAccessToken() {
+  const token = await bearerToken();
+  if (!token) {
+    throw new ApiError("Your session expired. Please sign in again.", "UNAUTHORIZED", 401);
+  }
   return token;
 }
 
