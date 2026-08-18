@@ -5,7 +5,7 @@ import { extractText } from "./extract.js";
 import { generateNotesFromText, generateQuizFromText } from "./ai.js";
 import { queueDocumentNotes } from "./notes.js";
 import { mimeTypeFor } from "./upload.js";
-import { newDocumentId, removeStoredFile, uploadUserFile } from "./storage.js";
+import { createSignedUpload, newDocumentId, removeStoredFile, storageObjectPath, downloadStoredFile } from "./storage.js";
 import {
   documentSummarySelect,
   ownedDocument,
@@ -18,15 +18,15 @@ const uploadFieldsSchema = z.object({
   spaceId: z.string().trim().min(1),
 });
 
-async function resolveUploadOwner(rawFields: unknown) {
-  const fields = uploadFieldsSchema.parse(rawFields);
-  const space = await prisma.space.findUnique({
-    where: { id: fields.spaceId },
-    select: { id: true, userId: true },
-  });
-  if (!space) throw Errors.notFound("Space not found.");
-  return { userId: space.userId, spaceId: space.id, title: fields.title };
-}
+const completeUploadSchema = z.object({
+  documentId: z.string().uuid(),
+  spaceId: z.string().trim().min(1),
+  filename: z.string().trim().min(1).max(200),
+  title: z.string().trim().min(1).max(160).optional(),
+  mimeType: z.string().trim().min(1).optional(),
+  storagePath: z.string().trim().min(1),
+  fileUrl: z.string().trim().min(1).optional(),
+});
 
 const moveSchema = z.object({
   spaceId: z.string().min(1).nullable(),
@@ -113,46 +113,72 @@ export async function getUserDocument(userId: string, id: string) {
   };
 }
 
-export async function createUserDocument(file: Express.Multer.File, rawFields: unknown) {
-  const { userId, spaceId, title: requestedTitle } = await resolveUploadOwner(rawFields);
+export async function prepareUserUpload(rawFields: unknown) {
+  const fields = uploadFieldsSchema.extend({
+    filename: z.string().trim().min(1).max(200),
+  }).parse(rawFields);
+  const space = await prisma.space.findUnique({
+    where: { id: fields.spaceId },
+    select: { id: true, userId: true },
+  });
+  if (!space) throw Errors.notFound("Space not found.");
 
-  const mimeType = mimeTypeFor(file.originalname, file.mimetype);
+  const documentId = newDocumentId();
+  const objectPath = storageObjectPath(space.userId, documentId, fields.filename);
+  const signed = await createSignedUpload(objectPath);
+  return {
+    documentId,
+    spaceId: space.id,
+    filename: fields.filename,
+    title: fields.title ?? fields.filename,
+    ...signed,
+  };
+}
+
+export async function completeUserUpload(rawFields: unknown) {
+  const fields = completeUploadSchema.parse(rawFields);
+  const space = await prisma.space.findUnique({
+    where: { id: fields.spaceId },
+    select: { id: true, userId: true },
+  });
+  if (!space) throw Errors.notFound("Space not found.");
+
+  const expectedPrefix = `${space.userId}/${fields.documentId}/`;
+  if (!fields.storagePath.startsWith(expectedPrefix)) {
+    throw Errors.validation("That upload does not belong to this space.");
+  }
+
+  const buffer = await downloadStoredFile(fields.storagePath);
+  const mimeType = mimeTypeFor(fields.filename, fields.mimeType ?? "application/octet-stream");
   let text: string;
   try {
-    text = await extractText(file.buffer, mimeType, file.originalname);
+    text = await extractText(buffer, mimeType, fields.filename);
   } catch (error) {
+    await removeStoredFile(fields.storagePath);
     throw Errors.validation(error instanceof Error ? error.message : "Could not read that file.");
   }
   if (text.length < 80) {
+    await removeStoredFile(fields.storagePath);
     throw Errors.validation("That file does not contain enough readable text to study from.");
   }
 
-  const id = newDocumentId();
-  const stored = await uploadUserFile({
-    userId,
-    documentId: id,
-    filename: file.originalname,
-    mimeType,
-    buffer: file.buffer,
-  });
-
-  const title = requestedTitle ?? file.originalname;
+  const title = fields.title ?? fields.filename;
   try {
     const document = await prisma.document.create({
       data: {
-        id,
-        userId,
-        spaceId,
+        id: fields.documentId,
+        userId: space.userId,
+        spaceId: space.id,
         title,
-        filename: file.originalname,
+        filename: fields.filename,
         mimeType,
         extractedText: text,
-        storagePath: stored.storagePath,
-        fileUrl: stored.fileUrl,
+        storagePath: fields.storagePath,
+        fileUrl: fields.fileUrl ?? "",
       },
     });
 
-    await prisma.space.update({ where: { id: spaceId }, data: { updatedAt: new Date() } });
+    await prisma.space.update({ where: { id: space.id }, data: { updatedAt: new Date() } });
 
     if (process.env.VERCEL) void queueDocumentNotes(document);
     else await queueDocumentNotes(document);
@@ -164,7 +190,7 @@ export async function createUserDocument(file: Express.Multer.File, rawFields: u
       fileUrl: document.fileUrl,
     };
   } catch (error) {
-    await removeStoredFile(stored.storagePath);
+    await removeStoredFile(fields.storagePath);
     throw error;
   }
 }

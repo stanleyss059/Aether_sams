@@ -19,9 +19,8 @@ function storageClient(accessToken?: string): SupabaseClient {
     });
   }
   if (resolved.isProd) {
-    throw Errors.serviceUnavailable(
+    throw Errors.validation(
       "Storage uploads are not configured. Set SUPABASE_SERVICE_ROLE_KEY on the backend service, then redeploy.",
-      "STORAGE",
     );
   }
   return createClient(resolved.supabaseUrl, resolved.supabaseAnonKey, {
@@ -43,6 +42,38 @@ export function newDocumentId() {
   return randomUUID();
 }
 
+function storageErrorMessage(raw: string) {
+  const message = raw.toLowerCase();
+  if (message.includes("bucket") && message.includes("not found")) {
+    return 'The Supabase Storage bucket "files" was not found. Create it in Storage, then try again.';
+  }
+  if (
+    message.includes("row-level security") ||
+    message.includes("unauthorized") ||
+    message.includes("invalid jwt") ||
+    message.includes("403")
+  ) {
+    return "Could not save the file to Storage. Set SUPABASE_SERVICE_ROLE_KEY on the backend, then redeploy.";
+  }
+  return `Could not save the file to Storage: ${raw}`;
+}
+
+export async function createSignedUpload(objectPath: string) {
+  const client = storageClient();
+  const { data, error } = await client.storage.from(FILES_BUCKET).createSignedUploadUrl(objectPath);
+  if (error || !data?.signedUrl || !data.token) {
+    console.error("Supabase signed upload URL failed:", error?.message ?? "missing signed URL");
+    throw Errors.validation(storageErrorMessage(error?.message ?? "Could not create a signed upload URL."));
+  }
+  const { data: pub } = client.storage.from(FILES_BUCKET).getPublicUrl(data.path);
+  return {
+    storagePath: data.path,
+    token: data.token,
+    signedUrl: data.signedUrl,
+    fileUrl: pub.publicUrl,
+  };
+}
+
 export async function uploadUserFile(input: {
   userId: string;
   documentId: string;
@@ -59,26 +90,7 @@ export async function uploadUserFile(input: {
   });
   if (error) {
     console.error("Supabase Storage upload failed:", error.message);
-    const message = error.message.toLowerCase();
-    if (message.includes("bucket") && message.includes("not found")) {
-      throw Errors.serviceUnavailable(
-        'The Supabase Storage bucket "files" was not found. Create it in Storage, then try again.',
-        "STORAGE",
-      );
-    }
-    if (
-      !requireConfig().supabaseServiceRoleKey ||
-      message.includes("row-level security") ||
-      message.includes("unauthorized") ||
-      message.includes("invalid jwt") ||
-      message.includes("403")
-    ) {
-      throw Errors.serviceUnavailable(
-        "Could not save the file to Storage. Set SUPABASE_SERVICE_ROLE_KEY on the backend (Vercel → Environment Variables), then redeploy.",
-        "STORAGE",
-      );
-    }
-    throw Errors.serviceUnavailable(`Could not save the file to Storage: ${error.message}`, "STORAGE");
+    throw Errors.validation(storageErrorMessage(error.message));
   }
 
   const { data } = client.storage.from(FILES_BUCKET).getPublicUrl(objectPath);

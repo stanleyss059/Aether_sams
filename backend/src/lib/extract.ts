@@ -12,17 +12,24 @@ function vendorRoots() {
 }
 
 function loadPdfParse(): PdfParse {
+  // Use lib/pdf-parse.js so the package debug harness does not crash the process.
+  const files = ["lib/pdf-parse.js", "index.js"];
   if (process.env.VERCEL) {
     for (const root of vendorRoots()) {
-      try {
-        return require(path.join(root, "pdf-parse")) as PdfParse;
-      } catch {
-        // Try the next layout Vercel may use for bundled functions.
+      for (const file of files) {
+        try {
+          return require(path.join(root, "pdf-parse", file)) as PdfParse;
+        } catch {
+          // Try the next layout Vercel may use for bundled functions.
+        }
       }
     }
-    throw new Error("PDF parser is unavailable on this deployment.");
   }
-  return require("pdf-parse") as PdfParse;
+  try {
+    return require("pdf-parse/lib/pdf-parse.js") as PdfParse;
+  } catch {
+    return require("pdf-parse") as PdfParse;
+  }
 }
 
 type Mammoth = {

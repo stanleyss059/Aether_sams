@@ -19,11 +19,22 @@ type ApiPayload<T> = {
   error?: { message: string; code: string };
 };
 
-async function parseUploadResponse(res: Response): Promise<DocumentSummary> {
+type PreparedUpload = {
+  documentId: string;
+  spaceId: string;
+  filename: string;
+  title: string;
+  storagePath: string;
+  token: string;
+  signedUrl: string;
+  fileUrl: string;
+};
+
+async function parseJson<T>(res: Response): Promise<T> {
   const text = await res.text();
-  let json: ApiPayload<DocumentSummary>;
+  let json: ApiPayload<T>;
   try {
-    json = JSON.parse(text) as ApiPayload<DocumentSummary>;
+    json = JSON.parse(text) as ApiPayload<T>;
   } catch {
     throw new ApiError(
       res.status === 503
@@ -43,19 +54,46 @@ async function parseUploadResponse(res: Response): Promise<DocumentSummary> {
   return json.data;
 }
 
-/** POST /api/documents — upload a lecture file (no auth required; spaceId identifies the target). */
-export async function uploadDocument(input: UploadInput): Promise<DocumentSummary> {
-  const body = new FormData();
-  body.append("file", input.file, input.file.name);
-  body.append("spaceId", input.spaceId);
-  body.append("title", input.title ?? (input.file.name.replace(/\.[^.]+$/, "") || input.file.name));
-
-  const res = await fetch("/api/documents", {
-    method: "POST",
-    body,
+async function jsonPost<T>(path: string, body: unknown, method = "POST"): Promise<T> {
+  const res = await fetch(path, {
+    method,
     credentials: "include",
     cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseJson<T>(res);
+}
+
+/** Upload a lecture file directly to Supabase Storage, then register it with the API. */
+export async function uploadDocument(input: UploadInput): Promise<DocumentSummary> {
+  const title = input.title ?? (input.file.name.replace(/\.[^.]+$/, "") || input.file.name);
+  const prepared = await jsonPost<PreparedUpload>("/api/documents/prepare", {
+    spaceId: input.spaceId,
+    filename: input.file.name,
+    title,
   });
 
-  return parseUploadResponse(res);
+  const put = await fetch(prepared.signedUrl, {
+    method: "PUT",
+    body: input.file,
+    headers: {
+      "Content-Type": input.file.type || "application/octet-stream",
+      Authorization: `Bearer ${prepared.token}`,
+    },
+  });
+  if (!put.ok) {
+    const detail = await put.text().catch(() => "");
+    throw new ApiError(detail || "Could not upload the file to Storage.", "STORAGE", put.status || 400);
+  }
+
+  return jsonPost<DocumentSummary>("/api/documents/complete", {
+    documentId: prepared.documentId,
+    spaceId: prepared.spaceId,
+    filename: prepared.filename,
+    title: prepared.title,
+    mimeType: input.file.type,
+    storagePath: prepared.storagePath,
+    fileUrl: prepared.fileUrl,
+  });
 }

@@ -9,7 +9,16 @@ import { attemptsRouter } from "./routes/attempts.js";
 
 export function createApiRouter(): Router {
   const api = Router();
-  api.use(attachSupabaseUser);
+  api.use((req, res, next) => {
+    if (
+      req.method === "POST" &&
+      (req.path === "/documents/prepare" || req.path === "/documents/complete")
+    ) {
+      next();
+      return;
+    }
+    attachSupabaseUser(req, res, next);
+  });
   api.use("/auth", authRouter);
   api.use("/admin", adminRouter);
   api.use(spacesRouter, documentsRouter, quizzesRouter, attemptsRouter);

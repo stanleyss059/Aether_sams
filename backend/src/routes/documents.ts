@@ -3,7 +3,7 @@ import { logAudit } from "../lib/audit.js";
 import { readAccessToken } from "../lib/auth-token.js";
 import { sendDocumentDownload } from "../lib/download.js";
 import {
-  createUserDocument,
+  completeUserUpload,
   deleteUserDocument,
   downloadUserDocument,
   generateUserDocumentNotes,
@@ -11,23 +11,20 @@ import {
   getUserDocument,
   listUserDocuments,
   moveUserDocument,
+  prepareUserUpload,
 } from "../lib/documents-service.js";
-import { Errors } from "../lib/errors.js";
-import { fileUpload } from "../lib/upload.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
-function uploadSingle(field: string) {
-  return (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
-    fileUpload.single(field)(req, res, (error) => {
-      if (error) next(error);
-      else next();
-    });
-  };
+function isPublicUpload(req: { method: string; path: string }) {
+  return (
+    req.method === "POST" &&
+    (req.path === "/documents/prepare" || req.path === "/documents/complete")
+  );
 }
 
 export const documentsRouter = Router();
 documentsRouter.use((req, res, next) => {
-  if (req.method === "POST" && req.path === "/documents") {
+  if (isPublicUpload(req)) {
     next();
     return;
   }
@@ -43,19 +40,23 @@ documentsRouter.get(
 );
 
 documentsRouter.post(
-  "/documents",
+  "/documents/prepare",
+  asyncHandler(async (req, res) => {
+    const data = await prepareUserUpload(req.body);
+    res.json({ success: true, data });
+  }),
+);
+
+documentsRouter.post(
+  "/documents/complete",
   auditFailures("document.create", "document", {
     metadata: (req) => ({
-      filename: req.file?.originalname,
-      byteLength: req.file?.size,
+      filename: typeof req.body?.filename === "string" ? req.body.filename : undefined,
       spaceId: typeof req.body?.spaceId === "string" ? req.body.spaceId : undefined,
     }),
   }),
-  uploadSingle("file"),
   asyncHandler(async (req, res) => {
-    if (!req.file) throw Errors.validation("Choose a file to upload.");
-
-    const data = await createUserDocument(req.file, req.body);
+    const data = await completeUserUpload(req.body);
     logAudit({
       req,
       action: "document.create",
