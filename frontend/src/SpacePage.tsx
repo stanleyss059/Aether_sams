@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
-import { uploadDocument } from "./upload";
+import { uploadDocument } from "./documents";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 
