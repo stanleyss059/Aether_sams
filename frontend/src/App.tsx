@@ -217,15 +217,33 @@ function DocumentPage() {
     if (!id || !doc || doc.summary.trim() || notesRequested.current === id) return;
     notesRequested.current = id;
     setNotesBusy(true);
-    api<{ summary: string }>(`/api/documents/${id}/notes`, { method: "POST" })
-      .then((data) => {
-        setDoc((current) => (current ? { ...current, summary: data.summary } : current));
-      })
-      .catch((err: Error) => {
+    let cancelled = false;
+
+    async function waitOrGenerate() {
+      try {
+        for (let attempt = 0; attempt < 16; attempt += 1) {
+          if (cancelled) return;
+          const latest = await api<DocDetail>(`/api/documents/${id}`);
+          if (latest.summary.trim()) {
+            setDoc(latest);
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2500));
+        }
+        const data = await api<{ summary: string }>(`/api/documents/${id}/notes`, { method: "POST" });
+        if (!cancelled) setDoc((current) => (current ? { ...current, summary: data.summary } : current));
+      } catch (err) {
         notesRequested.current = "";
-        setError(err instanceof ApiError ? err.message : "Could not generate notes.");
-      })
-      .finally(() => setNotesBusy(false));
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "Could not generate notes.");
+      } finally {
+        if (!cancelled) setNotesBusy(false);
+      }
+    }
+
+    void waitOrGenerate();
+    return () => {
+      cancelled = true;
+    };
   }, [id, doc]);
 
   async function generate() {

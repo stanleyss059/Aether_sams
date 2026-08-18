@@ -27,13 +27,14 @@ export function SpacePage() {
   const [pending, setPending] = useState<PendingDelete | null>(null);
 
   async function load() {
-    if (!id) return;
+    if (!id) return null;
     const next = await api<SpaceDetail>(`/api/spaces/${id}`);
     setSpace(next);
     setTitle(next.title);
     setCourseCode(next.courseCode);
     setDescription(next.description);
     setAccent(accentOf(next.accent));
+    return next;
   }
 
   useEffect(() => {
@@ -95,7 +96,7 @@ export function SpacePage() {
       body.append("title", file.name.replace(/\.[^.]+$/, "") || file.name);
       const created = await api<{ id: string }>("/api/documents", { method: "POST", body });
       await load();
-      void generateNotes(created.id);
+      void waitForNotes(created.id);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.";
@@ -111,6 +112,23 @@ export function SpacePage() {
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function waitForNotes(docId: string) {
+    setNotingId(docId);
+    try {
+      for (let attempt = 0; attempt < 24; attempt += 1) {
+        const next = await load();
+        const doc = next?.documents.find((item) => item.id === docId);
+        if (doc?.summary?.trim()) return;
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+      setMessage("File uploaded. Notes are still finishing — click View note in a moment.");
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "File uploaded. Click View note if notes are not ready yet.");
+    } finally {
+      setNotingId(null);
     }
   }
 

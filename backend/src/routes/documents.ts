@@ -8,6 +8,7 @@ import { Errors } from "../lib/errors.js";
 import { logAudit, writeAudit } from "../lib/audit.js";
 import { extractText } from "../lib/extract.js";
 import { generateNotesFromText, generateQuizFromText } from "../lib/ai.js";
+import { queueDocumentNotes } from "../lib/notes.js";
 import { attachmentFilename, textDownloadFilename } from "../lib/download.js";
 import { ownedDocument, ownedSpace } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
@@ -141,6 +142,8 @@ documentsRouter.post(
       entityId: document.id,
       metadata: { title: document.title, filename: document.filename, spaceId: document.spaceId },
     });
+    if (process.env.VERCEL) void queueDocumentNotes(document);
+    else await queueDocumentNotes(document);
     res.status(201).json({
       success: true,
       data: { id: document.id, title: document.title, filename: document.filename },
@@ -191,6 +194,8 @@ documentsRouter.post(
       entityId: document.id,
       metadata: { title: document.title, filename: document.filename, spaceId: document.spaceId },
     });
+    if (process.env.VERCEL) void queueDocumentNotes(document);
+    else await queueDocumentNotes(document);
     res.status(201).json({
       success: true,
       data: { id: document.id, title: document.title, filename: document.filename },

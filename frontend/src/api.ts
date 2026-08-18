@@ -35,11 +35,14 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   try {
     json = JSON.parse(text) as Ok<T> | Fail;
   } catch {
+    const timedOut = res.status === 504 || res.status === 502 || res.status === 524 || !text.trim();
     throw new ApiError(
-      res.status >= 500
-        ? "The API crashed. Open Vercel → Logs and redeploy the latest commit."
-        : "Unexpected response from the server.",
-      "HTTP",
+      timedOut
+        ? "That took too long. If you just uploaded a file, it may still be saved — refresh and click View note."
+        : res.status >= 500
+          ? "The server hit an error. Refresh and try again."
+          : "Unexpected response from the server.",
+      timedOut ? "TIMEOUT" : "HTTP",
       res.status,
     );
   }
