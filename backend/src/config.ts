@@ -32,6 +32,13 @@ const envSchema = z
     if (isProd && !env.DIRECT_URL) {
       ctx.addIssue({ code: "custom", path: ["DIRECT_URL"], message: "DIRECT_URL is required in production." });
     }
+    if (isProd && (!env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY.trim().length < 20)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SUPABASE_SERVICE_ROLE_KEY"],
+        message: "SUPABASE_SERVICE_ROLE_KEY is required in production for Storage uploads.",
+      });
+    }
     if (env.DATABASE_URL && !/^postgres(ql)?:\/\//i.test(env.DATABASE_URL)) {
       ctx.addIssue({
         code: "custom",

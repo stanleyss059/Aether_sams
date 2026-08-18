@@ -67,6 +67,7 @@ export function createApp() {
           OPENAI_API_KEY: Boolean(process.env.OPENAI_API_KEY),
           FRONTEND_URL: Boolean(process.env.FRONTEND_URL),
         },
+        storageReady: Boolean(config?.supabaseServiceRoleKey),
       },
       error: config ? undefined : { message: configError ?? "Missing environment.", code: "CONFIG" },
     });
