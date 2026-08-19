@@ -15,20 +15,43 @@ type Auth = {
 
 const Ctx = createContext<Auth | null>(null);
 
+async function fetchLocalUser(): Promise<User | null> {
+  const me = await api<{ user: User | null }>("/api/auth/me");
+  return me.user;
+}
+
+async function fetchLocalUserWithRetry(attempts = 3): Promise<User | null> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await fetchLocalUser();
+    } catch (error) {
+      lastError = error;
+      if (error instanceof ApiError && (error.code === "SUSPENDED" || error.code === "UNAUTHORIZED")) {
+        throw error;
+      }
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Could not load your Aether account.");
+}
+
 async function hydrateUser(): Promise<User | null> {
   const { data } = await supabase.auth.getSession();
   if (!data.session) return null;
   try {
-    const me = await api<{ user: User | null }>("/api/auth/me");
-    if (!me.user) {
+    const user = await fetchLocalUserWithRetry();
+    if (!user) {
       await supabase.auth.signOut();
       return null;
     }
-    if (me.user.suspendedAt) {
+    if (user.suspendedAt) {
       await supabase.auth.signOut();
       throw new ApiError("Your account has been suspended.", "SUSPENDED", 403);
     }
-    return me.user;
+    return user;
   } catch (error) {
     if (error instanceof ApiError && error.code === "SUSPENDED") throw error;
     // Fall through if the API is briefly unavailable during boot.
@@ -96,13 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error) throw new Error(error.message);
         if (!data.session) throw new Error("Sign-in did not return a session.");
-        const me = await api<{ user: User | null }>("/api/auth/me");
-        if (!me.user) throw new Error("Could not load your Aether account.");
-        if (me.user.suspendedAt) {
+        const user = await fetchLocalUserWithRetry();
+        if (!user) throw new Error("Could not load your Aether account.");
+        if (user.suspendedAt) {
           await supabase.auth.signOut();
           throw new ApiError("Your account has been suspended.", "SUSPENDED", 403);
         }
-        setUser(me.user);
+        setUser(user);
         await recordAuthEvent("login");
       },
       register: async (name, email, password) => {
@@ -118,9 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw new Error(error.message);
 
         if (data.session?.user) {
-          const me = await api<{ user: User | null }>("/api/auth/me");
-          if (me.user) {
-            setUser(me.user);
+          const user = await fetchLocalUserWithRetry();
+          if (user) {
+            setUser(user);
             await recordAuthEvent("login");
           }
           return { needsEmailConfirmation: false };
@@ -131,9 +154,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
         });
         if (signedIn.data.session?.user) {
-          const me = await api<{ user: User | null }>("/api/auth/me");
-          if (me.user) {
-            setUser(me.user);
+          const user = await fetchLocalUserWithRetry();
+          if (user) {
+            setUser(user);
             await recordAuthEvent("login");
           }
           return { needsEmailConfirmation: false };

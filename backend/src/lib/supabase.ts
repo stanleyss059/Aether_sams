@@ -58,44 +58,69 @@ function desiredRole(email: string, current: UserRole): UserRole {
   return current;
 }
 
+function isUniqueConflict(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: unknown }).code === "P2002",
+  );
+}
+
+async function persistProfile(
+  existing: {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    suspendedAt: Date | null;
+    createdAt: Date;
+  },
+  name: string,
+  email: string,
+): Promise<AppUser> {
+  const role = desiredRole(email, existing.role);
+  if (existing.name === name && existing.email === email && existing.role === role) {
+    return toAppUser(existing);
+  }
+  const updated = await prisma.user.update({
+    where: { id: existing.id },
+    data: { name, email, role },
+  });
+  return toAppUser(updated);
+}
+
 export async function ensureLocalUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const email = (supabaseUser.email ?? "").toLowerCase();
   if (!email) throw new Error("Supabase user is missing an email.");
 
   const name = displayName(supabaseUser);
-  const existing = await prisma.user.findUnique({ where: { id: supabaseUser.id } });
-  if (existing) {
-    const role = desiredRole(email, existing.role);
-    if (existing.name !== name || existing.email !== email || existing.role !== role) {
-      const updated = await prisma.user.update({
-        where: { id: existing.id },
-        data: { name, email, role },
-      });
-      return toAppUser(updated);
-    }
-    return toAppUser(existing);
-  }
+  const existing =
+    (await prisma.user.findUnique({ where: { id: supabaseUser.id } })) ??
+    (await prisma.user.findUnique({ where: { email } }));
+  if (existing) return persistProfile(existing, name, email);
 
-  const byEmail = await prisma.user.findUnique({ where: { email } });
-  if (byEmail) {
-    const role = desiredRole(email, byEmail.role);
-    const updated = await prisma.user.update({
-      where: { id: byEmail.id },
-      data: { name, role },
+  try {
+    const created = await prisma.user.create({
+      data: {
+        id: supabaseUser.id,
+        name,
+        email,
+        passwordHash: SUPABASE_PASSWORD_PLACEHOLDER,
+        role: desiredRole(email, "USER"),
+      },
     });
-    return toAppUser(updated);
+    return toAppUser(created);
+  } catch (error) {
+    // Signup fires two /api/auth/me calls at once (form submit + auth listener).
+    // The loser of that race hits the unique email/id constraint; reuse the winner.
+    if (!isUniqueConflict(error)) throw error;
+    const recovered =
+      (await prisma.user.findUnique({ where: { id: supabaseUser.id } })) ??
+      (await prisma.user.findUnique({ where: { email } }));
+    if (!recovered) throw error;
+    return persistProfile(recovered, name, email);
   }
-
-  const created = await prisma.user.create({
-    data: {
-      id: supabaseUser.id,
-      name,
-      email,
-      passwordHash: SUPABASE_PASSWORD_PLACEHOLDER,
-      role: desiredRole(email, "USER"),
-    },
-  });
-  return toAppUser(created);
 }
 
 export const supabaseAuth = {
