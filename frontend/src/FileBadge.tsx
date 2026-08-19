@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, downloadDocument } from "./api";
+import { Spinner } from "./Spinner";
 
 const STYLES: Record<string, string> = {
   pdf: "bg-danger/10 text-danger",
@@ -56,8 +57,8 @@ export function SaveDocumentButton({
   }
 
   return (
-    <button type="button" className={className} disabled={busy} onClick={onDownload}>
-      {busy ? "Saving…" : "Save"}
+    <button type="button" className={`inline-flex items-center justify-center ${className}`} disabled={busy} onClick={onDownload}>
+      {busy ? <Spinner size="sm" /> : "Save"}
     </button>
   );
 }
@@ -78,8 +79,8 @@ export function ViewNoteButton({
 }) {
   if (generating) {
     return (
-      <button type="button" className={VIEW_NOTE_CLASS} disabled>
-        Generating notes…
+      <button type="button" className={`inline-flex items-center justify-center ${VIEW_NOTE_CLASS}`} disabled>
+        <Spinner size="sm" className="text-forest" />
       </button>
     );
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "./api";
+import { LoadingState, Spinner } from "./Spinner";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 
@@ -146,7 +147,7 @@ export function QuizPage() {
   }
 
   if (error && !quiz) return <p className="text-danger">{error}</p>;
-  if (!quiz || !question) return <p className="text-muted">Loading quiz…</p>;
+  if (!quiz || !question) return <LoadingState />;
 
   if (result) {
     return (
@@ -247,11 +248,11 @@ export function QuizPage() {
             ) : (
               <button
                 type="button"
-                className="rounded-md bg-gold px-5 py-2.5 font-semibold text-forest"
+                className="inline-flex items-center justify-center rounded-md bg-gold px-5 py-2.5 font-semibold text-forest"
                 disabled={busy}
                 onClick={submit}
               >
-                {busy ? "Scoring…" : "Submit quiz"}
+                {busy ? <Spinner size="sm" className="text-forest" /> : "Submit quiz"}
               </button>
             )}
           </div>
@@ -297,11 +298,11 @@ export function QuizPage() {
           </div>
           <button
             type="button"
-            className="mt-5 w-full rounded-md bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
+            className="mt-5 inline-flex w-full items-center justify-center rounded-md bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
             disabled={busy}
             onClick={submit}
           >
-            {busy ? "Scoring…" : "Submit quiz"}
+            {busy ? <Spinner size="sm" /> : "Submit quiz"}
           </button>
           {confirmSubmit && remaining > 0 ? (
             <p className="mt-3 rounded-md bg-gold/20 px-3 py-2 text-sm">

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Spinner } from "./Spinner";
 
 type ConfirmModalProps = {
   open: boolean;
@@ -66,11 +67,11 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
-            className="rounded-md bg-danger px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-md bg-danger px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             disabled={busy}
             onClick={onConfirm}
           >
-            {busy ? "Removing…" : confirmLabel}
+            {busy ? <Spinner size="sm" /> : confirmLabel}
           </button>
         </div>
       </div>

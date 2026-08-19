@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type AdminDashboard, type AuditLogEntry } from "../api";
+import { LoadingState } from "../Spinner";
 
 export function AdminDashboardPage() {
   const [data, setData] = useState<AdminDashboard | null>(null);
@@ -14,7 +15,7 @@ export function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-muted">Loading dashboard…</p>;
+  if (loading) return <LoadingState />;
   if (error) return <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>;
   if (!data) return null;
 

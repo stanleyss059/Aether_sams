@@ -5,6 +5,7 @@ import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from 
 import { uploadDocument } from "./documents";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
+import { LoadingState, Spinner } from "./Spinner";
 
 type PendingDelete =
   | { kind: "space" }
@@ -183,7 +184,7 @@ export function SpacePage() {
     }
   }
 
-  if (!space && !error) return <p className="text-muted">Loading space…</p>;
+  if (!space && !error) return <LoadingState />;
   if (!space) return <p className="text-danger">{error}</p>;
 
   const look = ACCENTS[accentOf(space.accent)];
@@ -225,11 +226,11 @@ export function SpacePage() {
           />
           <button
             type="button"
-            className="rounded-lg bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-lg bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            {busy && !editing ? "Uploading…" : "Upload"}
+            {busy && !editing ? <Spinner size="sm" /> : "Upload"}
           </button>
           <button
             type="button"
@@ -303,8 +304,8 @@ export function SpacePage() {
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button className="rounded-lg bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy}>
-              {busy ? "Saving…" : "Save changes"}
+            <button className="inline-flex items-center justify-center rounded-lg bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy}>
+              {busy ? <Spinner size="sm" /> : "Save changes"}
             </button>
             <button
               type="button"
@@ -356,15 +357,17 @@ export function SpacePage() {
                   ) : null}
                   <button
                     type="button"
-                    className="rounded-lg border border-forest/40 px-4 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded-lg border border-forest/40 px-4 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
                     disabled={busy || generatingId !== null}
                     onClick={() => generateQuiz(doc.id)}
                   >
-                    {generatingId === doc.id
-                      ? "Generating…"
-                      : doc.latestQuizId
-                        ? "New quiz"
-                        : "Generate quiz"}
+                    {generatingId === doc.id ? (
+                      <Spinner size="sm" className="text-forest" />
+                    ) : doc.latestQuizId ? (
+                      "New quiz"
+                    ) : (
+                      "Generate quiz"
+                    )}
                   </button>
                   <ViewNoteButton
                     documentId={doc.id}

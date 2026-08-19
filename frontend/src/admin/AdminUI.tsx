@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from "react";
+import { LoadingState } from "../Spinner";
 
 export type Tone = "accent" | "neutral" | "danger" | "warn";
 
@@ -76,14 +77,8 @@ export function ErrorNote({ message }: { message: string }) {
   return <p className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{message}</p>;
 }
 
-export function LoadingRows({ rows = 3 }: { rows?: number }) {
-  return (
-    <div className="grid gap-3" aria-hidden="true">
-      {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="h-24 animate-pulse rounded-2xl border border-line bg-white/70" />
-      ))}
-    </div>
-  );
+export function LoadingRows(_props: { rows?: number } = {}) {
+  return <LoadingState className="flex items-center justify-center py-12" />;
 }
 
 export function EmptyState({ title, description }: { title: string; description: string }) {

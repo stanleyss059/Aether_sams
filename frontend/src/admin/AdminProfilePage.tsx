@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError, type User } from "../api";
 import { useAuth } from "../AuthContext";
 import { supabase } from "../supabase";
+import { Spinner } from "../Spinner";
 
 const MIN_PASSWORD = 6;
 
@@ -148,8 +149,8 @@ export function AdminProfilePage() {
               required
             />
           </label>
-          <button className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy}>
-            {busy ? "Updating…" : "Change password"}
+          <button className="inline-flex items-center justify-center rounded-md bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy}>
+            {busy ? <Spinner size="sm" /> : "Change password"}
           </button>
         </form>
       </section>

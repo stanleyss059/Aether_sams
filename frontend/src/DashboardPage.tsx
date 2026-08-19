@@ -4,12 +4,14 @@ import { ACCENTS, accentOf } from "./accents";
 import { useAuth } from "./AuthContext";
 import { api, type DocListItem, type LibraryData } from "./api";
 import { FileBadge } from "./FileBadge";
+import { LoadingState } from "./Spinner";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [docs, setDocs] = useState<DocListItem[]>([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([api<LibraryData>("/api/spaces"), api<DocListItem[]>("/api/documents")])
@@ -17,7 +19,8 @@ export function DashboardPage() {
         setLibrary(spaces);
         setDocs(documents);
       })
-      .catch((err: Error) => setError(err.message));
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const spaceCount = library?.spaces.length ?? 0;
@@ -37,6 +40,10 @@ export function DashboardPage() {
 
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
 
+      {loading ? (
+        <LoadingState className="flex items-center justify-center py-16" />
+      ) : (
+      <>
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Spaces" value={spaceCount} to="/spaces" />
         <Stat label="Uploads" value={uploadCount} to="/uploads" />
@@ -119,6 +126,8 @@ export function DashboardPage() {
           </div>
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }

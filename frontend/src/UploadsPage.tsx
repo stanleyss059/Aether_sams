@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type DocListItem } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
+import { LoadingState } from "./Spinner";
 
 export function UploadsPage() {
   const [docs, setDocs] = useState<DocListItem[]>([]);
@@ -62,7 +63,7 @@ export function UploadsPage() {
         <p className="mt-1 text-muted">Every file you have uploaded, across all course spaces.</p>
       </div>
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
-      {loading ? <p className="text-muted">Loading uploads…</p> : null}
+      {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
       {!loading && docs.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
           No uploads yet. <Link to="/spaces">Open a space</Link> and add lecture notes.

@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type Accent, type LibraryData, type SpaceSummary } from "./api";
+import { LoadingState, Spinner } from "./Spinner";
 
 export function SpacesPage() {
   const navigate = useNavigate();
@@ -106,15 +107,15 @@ export function SpacesPage() {
               </button>
             ))}
           </div>
-          <button className="mt-4 rounded-md bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy}>
-            {busy ? "Creating…" : "Create space"}
+          <button className="mt-4 inline-flex items-center justify-center rounded-md bg-forest px-4 py-2.5 font-semibold text-white" disabled={busy}>
+            {busy ? <Spinner size="sm" /> : "Create space"}
           </button>
         </form>
       ) : error ? (
         <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
       ) : null}
 
-      {loading ? <p className="text-muted">Loading spaces…</p> : null}
+      {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
       {!loading && spaces.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-10 text-center text-muted">
           No spaces yet. Click New space to add a course deck.

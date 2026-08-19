@@ -7,6 +7,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.join(root, "..");
 const vendorDir = path.join(backendRoot, "src", "vercel-vendor");
 const pdfParseEntry = path.join(backendRoot, "node_modules", "pdf-parse", "lib", "pdf-parse.js");
+const pptEntry = path.join(backendRoot, "node_modules", "ppt-to-text", "ppt.js");
 
 fs.rmSync(vendorDir, { recursive: true, force: true });
 
@@ -23,7 +24,21 @@ await esbuild.build({
   external: ["@prisma/client", "prisma"],
   alias: {
     "pdf-parse": pdfParseEntry,
+    "ppt-to-text": pptEntry,
   },
+  plugins: [
+    {
+      name: "unsplit-sheetjs-requires",
+      setup(build) {
+        build.onLoad({ filter: /[\\/]ppt-to-text[\\/]ppt\.js$/ }, async (args) => ({
+          contents: (await fs.promises.readFile(args.path, "utf8"))
+            .replace(/require\('cf'\+'b'\)/g, "require('cfb')")
+            .replace(/require\('code'\+'page'\)/g, "require('codepage')"),
+          loader: "js",
+        }));
+      },
+    },
+  ],
   banner: {
     js: "const require_import_meta_url = require('node:url').pathToFileURL(__filename).href;",
   },

@@ -20,17 +20,18 @@ import { AdminUploadsPage } from "./admin/AdminUploadsPage";
 import { AdminSpacesPage } from "./admin/AdminSpacesPage";
 import { AdminAuditLogsPage } from "./admin/AdminAuditLogsPage";
 import { AdminProfilePage } from "./admin/AdminProfilePage";
+import { LoadingState, Spinner } from "./Spinner";
 
 function Guard() {
   const { user, loading } = useAuth();
-  if (loading) return <p className="p-8 text-muted">Loading…</p>;
+  if (loading) return <LoadingState className="flex min-h-screen items-center justify-center p-8" />;
   if (!user) return <Navigate to="/login" replace />;
   return <Shell />;
 }
 
 function AdminGuard() {
   const { user, loading } = useAuth();
-  if (loading) return <p className="p-8 text-muted">Loading…</p>;
+  if (loading) return <LoadingState className="flex min-h-screen items-center justify-center p-8" />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
   return <Outlet />;
@@ -107,8 +108,8 @@ function LoginPage() {
           Password
           <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
-        <button className="w-full rounded-md bg-forest py-2.5 font-semibold text-white" disabled={busy}>
-          {busy ? "Signing in…" : "Continue"}
+        <button className="inline-flex w-full items-center justify-center rounded-md bg-forest py-2.5 font-semibold text-white" disabled={busy}>
+          {busy ? <Spinner size="sm" /> : "Continue"}
         </button>
       </form>
       <p className="mt-4 text-sm text-muted">
@@ -164,8 +165,8 @@ function RegisterPage() {
           Password
           <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
-        <button className="w-full rounded-md bg-forest py-2.5 font-semibold text-white" disabled={busy}>
-          {busy ? "Creating…" : "Register"}
+        <button className="inline-flex w-full items-center justify-center rounded-md bg-forest py-2.5 font-semibold text-white" disabled={busy}>
+          {busy ? <Spinner size="sm" /> : "Register"}
         </button>
       </form>
       <p className="mt-4 text-sm text-muted">
@@ -277,7 +278,7 @@ function DocumentPage() {
     }
   }
 
-  if (!doc && !error) return <p>Loading…</p>;
+  if (!doc && !error) return <LoadingState />;
   if (!doc) return <p className="text-danger">{error}</p>;
 
   return (
@@ -299,11 +300,11 @@ function DocumentPage() {
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
       <div className="flex flex-wrap gap-3">
         <button
-          className="rounded-md bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-md bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
           disabled={busy}
           onClick={generate}
         >
-          {busy ? "Generating from your upload…" : "Generate 50 MCQs from this file"}
+          {busy ? <Spinner size="sm" /> : "Generate 50 MCQs from this file"}
         </button>
         <SaveDocumentButton
           documentId={doc.id}
