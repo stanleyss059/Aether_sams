@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { Errors } from "./errors.js";
-import { extractText } from "./extract.js";
 import { generateNotesFromText, generateQuizFromText } from "./ai.js";
 import { queueDocumentNotes } from "./notes.js";
 import { assertAllowedUploadFilename, mimeTypeFor } from "./upload.js";
@@ -154,6 +153,7 @@ export async function completeUserUpload(rawFields: unknown) {
   const mimeType = mimeTypeFor(fields.filename, fields.mimeType ?? "application/octet-stream");
   let text: string;
   try {
+    const { extractText } = await import("./extract.js");
     text = await extractText(buffer, mimeType, fields.filename);
   } catch (error) {
     await removeStoredFile(fields.storagePath);

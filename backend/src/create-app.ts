@@ -4,7 +4,10 @@ import helmet from "helmet";
 import { config, configError } from "./config.js";
 
 function describe(error: unknown) {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    const where = error.stack?.split("\n")[1]?.trim();
+    return where ? `${error.message} — ${where}` : error.message;
+  }
   return String(error);
 }
 
