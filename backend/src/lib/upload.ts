@@ -4,24 +4,37 @@ import { Errors } from "./errors.js";
 
 export const MAX_UPLOAD_BYTES = 3.5 * 1024 * 1024;
 
+export const UNSUPPORTED_UPLOAD_MESSAGE = "Upload a PDF, Word, PowerPoint, or text file.";
+
 export const ALLOWED_UPLOAD_TYPES = new Map([
   [".pdf", "application/pdf"],
   [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  [".ppt", "application/vnd.ms-powerpoint"],
+  [".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
   [".txt", "text/plain"],
   [".md", "text/markdown"],
 ]);
+
+export function isAllowedUploadFilename(filename: string) {
+  return ALLOWED_UPLOAD_TYPES.has(path.extname(filename).toLowerCase());
+}
+
+export function assertAllowedUploadFilename(filename: string) {
+  if (!isAllowedUploadFilename(filename)) {
+    throw Errors.validation(UNSUPPORTED_UPLOAD_MESSAGE);
+  }
+}
 
 export const fileUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 8 },
   fileFilter: (_req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();
-    const expected = ALLOWED_UPLOAD_TYPES.get(extension);
-    if (expected && (file.mimetype === expected || file.mimetype === "application/octet-stream")) {
+    if (ALLOWED_UPLOAD_TYPES.has(extension)) {
       cb(null, true);
       return;
     }
-    cb(Errors.validation("Upload a PDF, Word (.docx), or text file."));
+    cb(Errors.validation(UNSUPPORTED_UPLOAD_MESSAGE));
   },
 });
 

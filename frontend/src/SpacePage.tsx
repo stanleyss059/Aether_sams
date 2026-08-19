@@ -220,7 +220,7 @@ export function SpacePage() {
             ref={fileRef}
             className="hidden"
             type="file"
-            accept=".pdf,.docx,.txt,.md"
+            accept=".pdf,.docx,.ppt,.pptx,.txt,.md"
             onChange={(e) => onPickFile(e.target.files?.[0])}
           />
           <button
@@ -322,7 +322,7 @@ export function SpacePage() {
         <h2 className="text-xl font-bold tracking-[-0.03em]">Uploaded materials</h2>
         {space.documents.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed border-line bg-white/60 px-4 py-10 text-center text-muted">
-            Nothing in this space yet. Click Upload to add a PDF, Word file, or notes.
+            Nothing in this space yet. Click Upload to add a PDF, Word, PowerPoint, or notes.
           </p>
         ) : (
           <div className="mt-3 grid gap-3">

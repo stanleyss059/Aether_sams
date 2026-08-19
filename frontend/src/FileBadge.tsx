@@ -6,6 +6,8 @@ const STYLES: Record<string, string> = {
   pdf: "bg-danger/10 text-danger",
   docx: "bg-forest/10 text-forest",
   doc: "bg-forest/10 text-forest",
+  ppt: "bg-gold/10 text-slate",
+  pptx: "bg-gold/10 text-slate",
   txt: "bg-slate/10 text-slate",
   md: "bg-gold/10 text-slate",
 };

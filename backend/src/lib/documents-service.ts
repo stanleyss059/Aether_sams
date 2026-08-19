@@ -4,7 +4,7 @@ import { Errors } from "./errors.js";
 import { extractText } from "./extract.js";
 import { generateNotesFromText, generateQuizFromText } from "./ai.js";
 import { queueDocumentNotes } from "./notes.js";
-import { mimeTypeFor } from "./upload.js";
+import { assertAllowedUploadFilename, mimeTypeFor } from "./upload.js";
 import { createSignedUpload, newDocumentId, removeStoredFile, storageObjectPath, downloadStoredFile } from "./storage.js";
 import {
   documentSummarySelect,
@@ -117,6 +117,7 @@ export async function prepareUserUpload(rawFields: unknown) {
   const fields = uploadFieldsSchema.extend({
     filename: z.string().trim().min(1).max(200),
   }).parse(rawFields);
+  assertAllowedUploadFilename(fields.filename);
   const space = await prisma.space.findUnique({
     where: { id: fields.spaceId },
     select: { id: true, userId: true },
@@ -149,6 +150,7 @@ export async function completeUserUpload(rawFields: unknown) {
   }
 
   const buffer = await downloadStoredFile(fields.storagePath);
+  assertAllowedUploadFilename(fields.filename);
   const mimeType = mimeTypeFor(fields.filename, fields.mimeType ?? "application/octet-stream");
   let text: string;
   try {

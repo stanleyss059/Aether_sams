@@ -16,7 +16,7 @@ const steps = [
   {
     number: "02",
     title: "Upload your notes",
-    description: "Add a PDF, Word document, or text file. Aether extracts the readable content.",
+    description: "Add a PDF, Word, PowerPoint, or text file. Aether extracts the readable content.",
   },
   {
     number: "03",

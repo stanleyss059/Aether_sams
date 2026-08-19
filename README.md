@@ -67,7 +67,7 @@ SQLite is not supported. Both local and production use the Postgres database tha
 ## What it does
 
 - Private accounts and course spaces
-- PDF, Word (.docx), and text uploads
+- PDF, Word (.docx), PowerPoint (.ppt / .pptx), and text uploads
 - Study notes + MCQs generated only from your material
 - Quizzes with progress saved in the browser until submit
 - Admin console (`ADMIN_EMAIL`) with users, uploads, spaces, and audit logs

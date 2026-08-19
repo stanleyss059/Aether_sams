@@ -44,7 +44,7 @@ You’ll open that space automatically.
 
 ## 4. Upload lecture notes
 
-Supported types: **PDF**, **Word (.docx)**, and **text** (`.txt` / `.md`).
+Supported types: **PDF**, **Word (.docx)**, **PowerPoint** (`.ppt` / `.pptx`), and **text** (`.txt` / `.md`).
 
 1. Open a space.
 2. Click **Upload**.
@@ -108,7 +108,7 @@ You can retake quizzes later from the same material.
 
 1. Register / sign in  
 2. Create a space for your course  
-3. Upload a lecture PDF or notes  
+3. Upload a lecture PDF, PowerPoint, or notes  
 4. Click **Generate quiz**  
 5. Attempt the quiz and review results  
 
@@ -119,7 +119,7 @@ You can retake quizzes later from the same material.
 | Problem | What to try |
 |---------|-------------|
 | Sign-up asks for email confirmation | Check your inbox, or ask your admin to turn off “Confirm email” in Supabase |
-| Upload fails | Use PDF / DOCX / TXT / MD; keep the file under the size limit; ensure it has readable text |
+| Upload fails | Use PDF / DOCX / PPT / PPTX / TXT / MD; keep the file under the size limit; ensure it has readable text |
 | Generate quiz is slow or fails | Wait a bit and try again; very long documents take longer; ask your admin if AI keys are configured |
 | Can’t find a file | Check **My uploads**, or open the space you uploaded it into |
 | Forgot password | Use Supabase / site recovery if enabled, or ask your admin for help resetting access |
