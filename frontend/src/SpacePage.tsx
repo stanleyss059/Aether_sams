@@ -6,6 +6,7 @@ import { uploadDocument } from "./documents";
 import { ConfirmModal } from "./ConfirmModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 import { LoadingState, Spinner } from "./Spinner";
+import { UploadProgressBar, type UploadProgress } from "./UploadProgressBar";
 
 type PendingDelete =
   | { kind: "space" }
@@ -26,6 +27,7 @@ export function SpacePage() {
   const [accent, setAccent] = useState<Accent>("forest");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [notingId, setNotingId] = useState<string | null>(null);
+  const [upload, setUpload] = useState<UploadProgress | null>(null);
   const [pending, setPending] = useState<PendingDelete | null>(null);
 
   async function load() {
@@ -85,34 +87,71 @@ export function SpacePage() {
     }
   }
 
-  async function onPickFile(file: File | undefined) {
-    if (!file || !id) return;
+  async function onPickFiles(list: FileList | null) {
+    if (!list?.length || !id) return;
+    const files = Array.from(list);
     setBusy(true);
     setError("");
+    setMessage("");
+    const uploaded: string[] = [];
+    const failures: string[] = [];
     try {
-      const created = await uploadDocument({ file, spaceId: id });
-      await load();
-      void waitForNotes(created.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed.");
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        setUpload({ completed: index, total: files.length, filename: file.name });
+        try {
+          const created = await uploadDocument({ file, spaceId: id });
+          uploaded.push(created.id);
+        } catch (err) {
+          const reason = err instanceof ApiError || err instanceof Error ? err.message : "Upload failed.";
+          failures.push(files.length === 1 ? reason : `${file.name}: ${reason}`);
+        }
+      }
+      if (uploaded.length) {
+        setUpload({ completed: files.length, total: files.length, filename: "" });
+        await load();
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+      if (uploaded.length > 1 && failures.length === 0) {
+        setMessage(`Uploaded ${uploaded.length} files. Notes are generating in the background.`);
+      } else if (uploaded.length === 1 && failures.length === 0) {
+        setMessage("");
+      } else if (uploaded.length && failures.length) {
+        setMessage(`Uploaded ${uploaded.length} of ${files.length} files.`);
+      }
+      if (failures.length) setError(failures.join(" "));
+      if (uploaded.length) void waitForNotes(uploaded);
     } finally {
       setBusy(false);
+      setUpload(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
 
-  async function waitForNotes(docId: string) {
-    setNotingId(docId);
+  async function waitForNotes(docIds: string[]) {
+    const watchId = docIds[docIds.length - 1];
+    if (!watchId) return;
+    setNotingId(watchId);
     try {
       for (let attempt = 0; attempt < 24; attempt += 1) {
         const next = await load();
-        const doc = next?.documents.find((item) => item.id === docId);
-        if (doc?.summary?.trim()) return;
+        const ready = docIds.every((docId) => next?.documents.find((item) => item.id === docId)?.summary?.trim());
+        if (ready) return;
         await new Promise((resolve) => setTimeout(resolve, 2500));
       }
-      setMessage("File uploaded. Notes are still finishing — click View note in a moment.");
+      setMessage(
+        docIds.length > 1
+          ? "Files uploaded. Notes are still finishing — click View note in a moment."
+          : "File uploaded. Notes are still finishing — click View note in a moment.",
+      );
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : "File uploaded. Click View note if notes are not ready yet.");
+      setMessage(
+        err instanceof ApiError
+          ? err.message
+          : docIds.length > 1
+            ? "Files uploaded. Click View note if notes are not ready yet."
+            : "File uploaded. Click View note if notes are not ready yet.",
+      );
     } finally {
       setNotingId(null);
     }
@@ -221,8 +260,9 @@ export function SpacePage() {
             ref={fileRef}
             className="hidden"
             type="file"
+            multiple
             accept=".pdf,.docx,.ppt,.pptx,.txt,.md"
-            onChange={(e) => onPickFile(e.target.files?.[0])}
+            onChange={(e) => onPickFiles(e.target.files)}
           />
           <button
             type="button"
@@ -252,7 +292,8 @@ export function SpacePage() {
       </div>
 
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
-      {message ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{message}</p> : null}
+      {upload ? <UploadProgressBar {...upload} /> : null}
+      {!upload && message ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{message}</p> : null}
 
       {editing ? (
         <form className="rounded-2xl border border-line bg-white p-5" onSubmit={saveEdit}>

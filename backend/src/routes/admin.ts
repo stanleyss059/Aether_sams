@@ -30,7 +30,7 @@ adminRouter.get(
   "/dashboard",
   asyncHandler(async (_req, res) => {
     const [userCount, spaceCount, documentCount, quizCount, attemptCount, suspendedCount, recent] =
-      await Promise.all([
+      await prisma.$transaction([
         prisma.user.count(),
         prisma.space.count(),
         prisma.document.count(),
@@ -72,7 +72,7 @@ adminRouter.get(
           ],
         }
       : {};
-    const [total, users] = await Promise.all([
+    const [total, users] = await prisma.$transaction([
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
@@ -207,7 +207,7 @@ adminRouter.get(
           ],
         }
       : {};
-    const [total, documents] = await Promise.all([
+    const [total, documents] = await prisma.$transaction([
       prisma.document.count({ where }),
       prisma.document.findMany({
         where,
@@ -302,7 +302,7 @@ adminRouter.get(
           ],
         }
       : {};
-    const [total, spaces] = await Promise.all([
+    const [total, spaces] = await prisma.$transaction([
       prisma.space.count({ where }),
       prisma.space.findMany({
         where,
@@ -398,7 +398,7 @@ adminRouter.get(
     if (query.entityType) filters.push({ entityType: query.entityType });
 
     const where = filters.length ? { AND: filters } : {};
-    const [total, logs] = await Promise.all([
+    const [total, logs] = await prisma.$transaction([
       prisma.auditLog.count({ where }),
       prisma.auditLog.findMany({
         where,

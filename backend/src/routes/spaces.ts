@@ -19,7 +19,7 @@ spacesRouter.get(
   "/spaces",
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
-    const [spaces, unfiled] = await Promise.all([
+    const [spaces, unfiled] = await prisma.$transaction([
       prisma.space.findMany({
         where: { userId },
         orderBy: { updatedAt: "desc" },

@@ -48,7 +48,7 @@ Supported types: **PDF**, **Word (.docx)**, **PowerPoint** (`.ppt` / `.pptx`), a
 
 1. Open a space.
 2. Click **Upload**.
-3. Choose your file.
+3. Choose one or more files.
 
 Aether reads the text from the file and stores that for studying. Large files may take a moment to prepare.
 

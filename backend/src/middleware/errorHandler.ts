@@ -124,6 +124,14 @@ function describeError(err: unknown) {
         : "Invalid upload.";
     return { status: 400, code: "VALIDATION", message };
   }
+  const prismaCode = typeof err === "object" && err && "code" in err ? String((err as { code: unknown }).code) : "";
+  if (prismaCode === "P2024") {
+    return {
+      status: 503,
+      code: "DATABASE",
+      message: "The server is busy. Try again in a moment.",
+    };
+  }
   return { status: 500, code: "INTERNAL", message: "Something went wrong. Please try again." };
 }
 

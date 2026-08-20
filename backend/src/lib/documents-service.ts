@@ -137,6 +137,19 @@ export async function prepareUserUpload(rawFields: unknown) {
 
 export async function completeUserUpload(rawFields: unknown) {
   const fields = completeUploadSchema.parse(rawFields);
+  const existing = await prisma.document.findUnique({
+    where: { id: fields.documentId },
+    select: { id: true, title: true, filename: true, fileUrl: true, spaceId: true },
+  });
+  if (existing && existing.spaceId === fields.spaceId) {
+    return {
+      id: existing.id,
+      title: existing.title,
+      filename: existing.filename,
+      fileUrl: existing.fileUrl,
+    };
+  }
+
   const space = await prisma.space.findUnique({
     where: { id: fields.spaceId },
     select: { id: true, userId: true },
@@ -182,8 +195,7 @@ export async function completeUserUpload(rawFields: unknown) {
 
     await prisma.space.update({ where: { id: space.id }, data: { updatedAt: new Date() } });
 
-    if (process.env.VERCEL) void queueDocumentNotes(document);
-    else await queueDocumentNotes(document);
+    void queueDocumentNotes(document);
 
     return {
       id: document.id,

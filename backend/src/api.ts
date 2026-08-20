@@ -32,6 +32,18 @@ export async function createApiRouter(): Promise<Router> {
   try {
     const { adminRouter } = await import("./routes/admin.js");
     useRouter(api, adminRouter, "admin", "/admin");
+  } catch (error) {
+    console.error("Failed to load admin routes:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    api.use("/admin", (_req, res) => {
+      res.status(500).json({
+        success: false,
+        error: { message: `API failed to start: ${message}`, code: "BOOTSTRAP" },
+      });
+    });
+  }
+
+  try {
     const { documentsRouter } = await import("./routes/documents.js");
     const { spacesRouter } = await import("./routes/spaces.js");
     const { quizzesRouter } = await import("./routes/quizzes.js");
@@ -45,7 +57,7 @@ export async function createApiRouter(): Promise<Router> {
     const message = error instanceof Error ? error.message : String(error);
     api.use((req, res, next) => {
       const url = `${req.originalUrl ?? ""} ${req.path ?? ""}`.toLowerCase();
-      if (url.includes("/auth")) {
+      if (url.includes("/auth") || url.includes("/admin")) {
         next();
         return;
       }
