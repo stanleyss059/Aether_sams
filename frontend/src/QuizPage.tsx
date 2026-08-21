@@ -177,7 +177,7 @@ export function QuizPage() {
           </Link>
           <h1 className="mt-1 font-serif text-3xl">{quiz.title}</h1>
         </div>
-        <p className="rounded-full border border-line bg-white px-3 py-1 text-sm text-muted">
+        <p className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted">
           {answeredCount} of {quiz.questions.length} answered
         </p>
       </div>
@@ -187,15 +187,16 @@ export function QuizPage() {
           <span>Question {index + 1}</span>
           <span>{progress}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white ring-1 ring-line">
-          <div className="h-full rounded-full bg-forest transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-2 overflow-hidden rounded-full bg-surface ring-1 ring-line">
+          <div className="h-full rounded-full bg-forest transition-[width] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_16rem]">
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-sm sm:p-7">
+        <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-7">
+          <div key={question.id} className="morph-in">
           <p className="font-serif text-5xl leading-none text-gold">{index + 1}</p>
           <h2 className="mt-4 font-serif text-2xl leading-snug">{question.prompt}</h2>
           <div className="mt-6 space-y-3">
@@ -212,12 +213,12 @@ export function QuizPage() {
                   className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition ${
                     active
                       ? "border-forest bg-forest/10 ring-2 ring-forest"
-                      : "border-line bg-parchment/40 hover:border-forest/40 hover:bg-white"
+                      : "border-line bg-parchment/40 hover:border-forest/40 hover:bg-surface"
                   }`}
                 >
                   <span
                     className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md text-sm font-bold ${
-                      active ? "bg-forest text-white" : "bg-white text-forest ring-1 ring-line"
+                      active ? "bg-forest text-white" : "bg-surface text-forest ring-1 ring-line"
                     }`}
                   >
                     {LETTERS[i]}
@@ -248,7 +249,7 @@ export function QuizPage() {
             ) : (
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-md bg-gold px-5 py-2.5 font-semibold text-forest"
+                className="inline-flex items-center justify-center rounded-md bg-gold px-5 py-2.5 font-semibold text-ink"
                 disabled={busy}
                 onClick={submit}
               >
@@ -257,9 +258,10 @@ export function QuizPage() {
             )}
           </div>
           <p className="mt-4 text-xs text-muted">Use A–D or 1–4 to choose. Arrow keys move between questions.</p>
+          </div>
         </section>
 
-        <aside className="rounded-2xl border border-line bg-white p-4">
+        <aside className="rounded-2xl border border-line bg-surface p-4">
           <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-muted uppercase">Jump to</p>
           <div className="grid grid-cols-10 gap-1.5 lg:grid-cols-5">
             {quiz.questions.map((q, i) => {
@@ -273,7 +275,7 @@ export function QuizPage() {
                   onClick={() => setIndex(i)}
                   className={`h-8 rounded-md text-xs font-semibold ${
                     current
-                      ? "bg-gold text-forest"
+                      ? "bg-gold text-ink"
                       : filled
                         ? "bg-forest text-white"
                         : "bg-parchment text-muted ring-1 ring-line"
@@ -341,7 +343,7 @@ function ResultsView({
         ← {quiz.documentTitle}
       </Link>
 
-      <section className="grid gap-5 rounded-2xl border border-line bg-white p-6 sm:grid-cols-[auto_1fr] sm:items-center">
+      <section className="grid gap-5 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-[auto_1fr] sm:items-center">
         <ScoreRing percent={percent} tone={tone} />
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Results</p>
@@ -375,7 +377,7 @@ function ResultsView({
             type="button"
             onClick={() => setFilter(id)}
             className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-              filter === id ? "bg-forest text-white" : "border border-line bg-white text-muted"
+              filter === id ? "bg-forest text-white" : "border border-line bg-surface text-muted"
             }`}
           >
             {label}
@@ -389,7 +391,7 @@ function ResultsView({
           return (
             <article
               key={item.id}
-              className={`rounded-2xl border bg-white p-5 ${
+              className={`rounded-2xl border bg-surface p-5 ${
                 item.correct ? "border-forest/30" : "border-danger/30"
               }`}
             >
@@ -419,7 +421,7 @@ function ResultsView({
                             : "border-transparent text-muted"
                       }`}
                     >
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-white text-xs ring-1 ring-line">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface text-xs ring-1 ring-line">
                         {LETTERS[i]}
                       </span>
                       <span>
@@ -447,7 +449,7 @@ function ScoreRing({ percent, tone }: { percent: number; tone: string }) {
   return (
     <div className={`relative grid h-28 w-28 place-items-center ${tone}`}>
       <svg viewBox="0 0 100 100" className="h-28 w-28 -rotate-90">
-        <circle cx="50" cy="50" r={radius} fill="none" stroke="#ddd4c4" strokeWidth="8" />
+        <circle cx="50" cy="50" r={radius} fill="none" stroke="var(--line)" strokeWidth="8" />
         <circle
           cx="50"
           cy="50"

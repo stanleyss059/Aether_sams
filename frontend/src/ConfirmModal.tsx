@@ -38,7 +38,7 @@ export function ConfirmModal({
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+        className="overlay-in absolute inset-0 bg-ink/40 backdrop-blur-sm"
         disabled={busy}
         onClick={onCancel}
       />
@@ -47,7 +47,7 @@ export function ConfirmModal({
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
         aria-describedby="confirm-modal-desc"
-        className="relative w-full max-w-md rounded-3xl border border-line bg-white p-6 shadow-[0_24px_80px_rgb(15_23_42/0.20)]"
+        className="morph-in relative w-full max-w-md rounded-3xl border border-line bg-surface p-6 shadow-panel"
       >
         <span className="inline-flex rounded-full bg-danger/10 px-2.5 py-1 text-xs font-bold text-danger">CONFIRM</span>
         <h2 id="confirm-modal-title" className="mt-4 text-2xl font-bold tracking-[-0.03em] text-ink">

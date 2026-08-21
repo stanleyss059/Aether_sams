@@ -274,7 +274,7 @@ export function SpacePage() {
           </button>
           <button
             type="button"
-            className="rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
+            className="rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-60"
             onClick={() => (editing ? setEditing(false) : openEdit())}
             disabled={busy}
           >
@@ -296,7 +296,7 @@ export function SpacePage() {
       {!upload && message ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{message}</p> : null}
 
       {editing ? (
-        <form className="rounded-2xl border border-line bg-white p-5" onSubmit={saveEdit}>
+        <form className="rounded-2xl border border-line bg-surface p-5" onSubmit={saveEdit}>
           <h2 className="text-xl font-bold tracking-[-0.03em]">Edit space</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
@@ -336,7 +336,7 @@ export function SpacePage() {
                 type="button"
                 onClick={() => setAccent(key)}
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                  accent === key ? "border-forest bg-forest/5 text-forest" : "border-line bg-white text-ink"
+                  accent === key ? "border-forest bg-forest/5 text-forest" : "border-line bg-surface text-ink"
                 }`}
               >
                 <span className={`h-3 w-3 rounded-full ${ACCENTS[key].bar}`} />
@@ -363,15 +363,15 @@ export function SpacePage() {
       <section>
         <h2 className="text-xl font-bold tracking-[-0.03em]">Uploaded materials</h2>
         {space.documents.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-dashed border-line bg-white/60 px-4 py-10 text-center text-muted">
+          <p className="mt-3 rounded-xl border border-dashed border-line bg-surface/60 px-4 py-10 text-center text-muted">
             Nothing in this space yet. Click Upload to add a PDF, Word, PowerPoint, or notes.
           </p>
         ) : (
-          <div className="mt-3 grid gap-3">
+          <div className="mt-3 stagger grid gap-3">
             {space.documents.map((doc) => (
               <article
                 key={doc.id}
-                className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-forest/30 sm:flex-row sm:items-center sm:gap-5"
+                className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:gap-5"
               >
                 <Link to={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-4 no-underline">
                   <FileBadge filename={doc.filename} />

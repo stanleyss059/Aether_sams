@@ -49,14 +49,14 @@ export function AdminShell() {
         </div>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 self-start rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-muted no-underline hover:text-ink"
+          className="inline-flex items-center gap-2 self-start rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-muted no-underline hover:text-ink"
         >
           <IconArrowLeft className="h-4 w-4" />
           Back to app
         </Link>
       </div>
 
-      <nav className="overflow-x-auto rounded-2xl border border-line bg-white p-1.5 shadow-sm">
+      <nav className="overflow-x-auto rounded-2xl border border-line bg-surface p-1.5 shadow-sm">
         <div className="flex min-w-max gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -65,10 +65,11 @@ export function AdminShell() {
                 key={tab.to}
                 to={tab.to}
                 end={tab.end}
+                viewTransition
                 className={({ isActive }) =>
                   `inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold no-underline whitespace-nowrap transition ${
                     isActive
-                      ? "bg-forest text-white shadow-sm shadow-forest/20"
+                      ? "nav-active bg-forest text-white shadow-sm shadow-forest/20"
                       : "text-muted hover:bg-parchment hover:text-ink"
                   }`
                 }
@@ -81,7 +82,9 @@ export function AdminShell() {
         </div>
       </nav>
 
-      <Outlet />
+      <div key={pathname} className="page-enter">
+        <Outlet />
+      </div>
     </div>
   );
 }

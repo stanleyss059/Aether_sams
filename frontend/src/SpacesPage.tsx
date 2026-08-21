@@ -60,7 +60,7 @@ export function SpacesPage() {
       </div>
 
       {creating ? (
-        <form className="rounded-2xl border border-line bg-white p-5 shadow-sm" onSubmit={onCreate}>
+        <form className="morph-in rounded-2xl border border-line bg-surface p-5 shadow-sm" onSubmit={onCreate}>
           {error ? <p className="mb-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
@@ -99,7 +99,7 @@ export function SpacesPage() {
                 type="button"
                 onClick={() => setAccent(key)}
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                  accent === key ? "border-ink bg-parchment" : "border-line bg-white"
+                  accent === key ? "border-ink bg-parchment" : "border-line bg-surface"
                 }`}
               >
                 <span className={`h-3 w-3 rounded-full ${ACCENTS[key].bar}`} />
@@ -117,18 +117,18 @@ export function SpacesPage() {
 
       {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
       {!loading && spaces.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-10 text-center text-muted">
+        <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-10 text-center text-muted">
           No spaces yet. Click New space to add a course deck.
         </p>
       ) : (
-        <div className="grid gap-3">
+        <div className="stagger grid gap-3">
           {spaces.map((space) => {
             const look = ACCENTS[accentOf(space.accent)];
             return (
               <Link
                 key={space.id}
                 to={`/spaces/${space.id}`}
-                className="group flex overflow-hidden rounded-2xl border border-line bg-white no-underline transition hover:-translate-y-0.5 hover:border-forest/30"
+                className="lift-card group flex overflow-hidden rounded-2xl border border-line bg-surface no-underline"
               >
                 <div className={`w-1.5 shrink-0 ${look.bar}`} />
                 <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">

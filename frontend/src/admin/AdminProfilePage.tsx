@@ -80,7 +80,7 @@ export function AdminProfilePage() {
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
       {message ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{message}</p> : null}
 
-      <section className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
         <h3 className="font-serif text-xl">Details</h3>
         <form className="mt-4 space-y-4" onSubmit={saveProfile}>
           <label className="block text-sm font-semibold">
@@ -108,7 +108,7 @@ export function AdminProfilePage() {
         </form>
       </section>
 
-      <section className="rounded-2xl border border-line bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
         <h3 className="font-serif text-xl">Change password</h3>
         <p className="mt-1 text-sm text-muted">
           Enter your current password, then choose a new one (at least {MIN_PASSWORD} characters).

@@ -30,7 +30,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-3xl border border-line bg-white p-6 sm:p-8">
+      <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8">
         <span className="inline-flex rounded-full bg-forest/10 px-2.5 py-1 text-xs font-bold text-forest">DASHBOARD</span>
         <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Welcome back, {firstName}</h1>
         <p className="mt-2 max-w-2xl leading-7 text-muted">
@@ -44,7 +44,7 @@ export function DashboardPage() {
         <LoadingState className="flex items-center justify-center py-16" />
       ) : (
       <>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="stagger grid gap-3 sm:grid-cols-3">
         <Stat label="Spaces" value={spaceCount} to="/spaces" />
         <Stat label="Uploads" value={uploadCount} to="/uploads" />
         <Stat label="Quizzes" value={quizCount} to="/uploads" />
@@ -58,18 +58,18 @@ export function DashboardPage() {
           </Link>
         </div>
         {library && library.spaces.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
+          <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
             No spaces yet. <Link to="/spaces">Create a course deck</Link> to group related notes.
           </p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="stagger grid gap-3 sm:grid-cols-2">
             {library?.spaces.slice(0, 4).map((space) => {
               const look = ACCENTS[accentOf(space.accent)];
               return (
                 <Link
                   key={space.id}
                   to={`/spaces/${space.id}`}
-                  className="group overflow-hidden rounded-2xl border border-line bg-white no-underline transition hover:-translate-y-0.5 hover:border-forest/30"
+                  className="lift-card group overflow-hidden rounded-2xl border border-line bg-surface no-underline"
                 >
                   <div className={`h-1.5 ${look.bar}`} />
                   <div className="p-5">
@@ -102,16 +102,16 @@ export function DashboardPage() {
           </Link>
         </div>
         {docs.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
+          <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
             Nothing uploaded yet. Open a space and add lecture notes.
           </p>
         ) : (
-          <div className="grid gap-2">
+          <div className="stagger grid gap-2">
             {docs.slice(0, 5).map((doc) => (
               <Link
                 key={doc.id}
                 to={`/documents/${doc.id}`}
-                className="flex items-center gap-4 rounded-2xl border border-line bg-white px-4 py-3.5 no-underline transition hover:-translate-y-0.5 hover:border-forest/30"
+                className="lift-card flex items-center gap-4 rounded-2xl border border-line bg-surface px-4 py-3.5 no-underline"
               >
                 <FileBadge filename={doc.filename} />
                 <div className="min-w-0 flex-1">
@@ -136,7 +136,7 @@ function Stat({ label, value, to }: { label: string; value: number; to: string }
   return (
     <Link
       to={to}
-      className="group rounded-2xl border border-line bg-white p-5 no-underline transition hover:-translate-y-0.5 hover:border-forest/30"
+      className="lift-card group rounded-2xl border border-line bg-surface p-5 no-underline"
     >
       <p className="text-xs font-bold tracking-[0.12em] text-muted uppercase">{label}</p>
       <div className="mt-3 flex items-end justify-between">

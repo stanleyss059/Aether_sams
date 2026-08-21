@@ -190,13 +190,13 @@ export function StudyNotes({
       {loading && !sections.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {[0, 1, 2].map((key) => (
-            <div key={key} className="h-40 animate-pulse rounded-2xl border border-line bg-white" />
+            <div key={key} className="h-40 animate-pulse rounded-2xl border border-line bg-surface" />
           ))}
         </div>
       ) : null}
 
       {!loading && !sections.length ? (
-        <p className="rounded-2xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
+        <p className="rounded-2xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
           Notes are not ready yet.
         </p>
       ) : null}
@@ -208,7 +208,7 @@ export function StudyNotes({
           return (
             <article
               key={`${section.title}-${index}`}
-              className={`overflow-hidden rounded-2xl border border-line bg-white ${featured ? "lg:col-span-2" : ""}`}
+              className={`overflow-hidden rounded-2xl border border-line bg-surface ${featured ? "lg:col-span-2" : ""}`}
             >
               <div className={`h-1.5 ${look.bar}`} />
               <div className="p-5 sm:p-6">

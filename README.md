@@ -26,7 +26,7 @@ npm run dev
 
 4. Open **http://localhost:5174** and **Register** a new account (auth is handled by Supabase).
 
-In the Supabase dashboard, under **Authentication → Providers → Email**, you can turn off “Confirm email” for local testing so signup signs you in immediately.
+In the Supabase dashboard, under **Authentication → Providers → Email**, you can turn off “Confirm email” for local testing so signup signs you in immediately. For password reset emails, add `http://localhost:5174/reset-password` and your live `/reset-password` URL under **Authentication → URL Configuration → Redirect URLs**.
 
 ## Vercel deploy
 

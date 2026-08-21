@@ -129,7 +129,7 @@ export function AdminAuditLogsPage() {
               return (
                 <article
                   key={entry.id}
-                  className={`rounded-2xl border border-l-4 border-line bg-white px-4 py-3.5 ${
+                  className={`rounded-2xl border border-l-4 border-line bg-surface px-4 py-3.5 ${
                     failed ? "border-l-danger" : (category?.stripe ?? "border-l-slate")
                   }`}
                 >

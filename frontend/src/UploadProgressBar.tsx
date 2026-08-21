@@ -43,7 +43,7 @@ export function UploadProgressBar({ completed, total, filename }: UploadProgress
         </p>
       </div>
       <div className="px-4 pb-3">
-        <div className="relative h-2.5 overflow-hidden rounded-full bg-white/70">
+        <div className="relative h-2.5 overflow-hidden rounded-full bg-surface/70">
           <div
             className="upload-progress-fill absolute inset-y-0 left-0 h-full min-w-2.5 rounded-full"
             style={{ width: `${width}%` }}

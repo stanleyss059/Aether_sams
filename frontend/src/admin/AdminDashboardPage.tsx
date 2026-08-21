@@ -40,7 +40,7 @@ export function AdminDashboardPage() {
           </Link>
         </div>
         {recentActivity.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
+          <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
             No activity recorded yet.
           </p>
         ) : (
@@ -57,7 +57,7 @@ export function AdminDashboardPage() {
 
 function Stat({ label, value, to }: { label: string; value: number; to: string }) {
   return (
-    <Link to={to} className="rounded-2xl border border-line bg-white p-5 no-underline shadow-sm">
+    <Link to={to} className="lift-card rounded-2xl border border-line bg-surface p-5 no-underline shadow-sm">
       <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">{label}</p>
       <p className="mt-2 font-serif text-4xl text-forest">{value}</p>
     </Link>
@@ -66,7 +66,7 @@ function Stat({ label, value, to }: { label: string; value: number; to: string }
 
 function ActivityRow({ entry }: { entry: AuditLogEntry }) {
   return (
-    <div className="rounded-xl border border-line bg-white px-4 py-3">
+    <div className="rounded-xl border border-line bg-surface px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold text-ink">{entry.action}</p>
         <p className="text-xs text-muted">{new Date(entry.createdAt).toLocaleString()}</p>

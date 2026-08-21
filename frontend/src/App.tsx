@@ -1,15 +1,18 @@
-import { Navigate, Outlet, Route, Routes, Link, useNavigate, useParams } from "react-router-dom";
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { Navigate, Outlet, Route, Routes, Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
+import { AuthCard } from "./AuthCard";
 import { api, ApiError, type DocDetail } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { SaveDocumentButton } from "./FileBadge";
 import { StudyNotes } from "./StudyNotes";
 import { DashboardPage } from "./DashboardPage";
+import { ForgotPasswordPage } from "./ForgotPasswordPage";
 import { NavBar } from "./NavBar";
 import { OnboardingGuide } from "./OnboardingGuide";
 import { ProfilePage } from "./ProfilePage";
 import { QuizPage } from "./QuizPage";
+import { ResetPasswordPage } from "./ResetPasswordPage";
 import { SpacePage } from "./SpacePage";
 import { SpacesPage } from "./SpacesPage";
 import { UploadsPage } from "./UploadsPage";
@@ -39,6 +42,7 @@ function AdminGuard() {
 
 function Shell() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
@@ -66,7 +70,10 @@ function Shell() {
   return (
     <div className="min-h-screen">
       <NavBar />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      <main
+        key={pathname.startsWith("/admin") ? "admin" : pathname}
+        className="page-enter mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10"
+      >
         <Outlet />
       </main>
       <OnboardingGuide open={showGuide} name={user?.name ?? "there"} onClose={dismissGuide} />
@@ -77,6 +84,11 @@ function Shell() {
 function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const notice =
+    typeof location.state === "object" && location.state && "notice" in location.state
+      ? String((location.state as { notice?: string }).notice ?? "")
+      : "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -99,21 +111,27 @@ function LoginPage() {
   return (
     <AuthCard title="Sign in" subtitle="Create a course space, upload notes, and generate quizzes from your own material.">
       <form className="space-y-4" onSubmit={onSubmit}>
+        {notice ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{notice}</p> : null}
         {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
         <label className="block text-sm font-semibold">
           Email
-          <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2.5" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="block text-sm font-semibold">
           Password
-          <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2.5" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
+        <div className="flex justify-end">
+          <Link to="/forgot-password" state={{ email }} className="text-sm font-semibold text-forest no-underline hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <button className="inline-flex w-full items-center justify-center rounded-md bg-forest py-2.5 font-semibold text-white" disabled={busy}>
           {busy ? <Spinner size="sm" /> : "Continue"}
         </button>
       </form>
       <p className="mt-4 text-sm text-muted">
-        New here? <Link to="/register">Create an account</Link>
+        New here? <Link to="/register" className="font-semibold text-forest">Create an account</Link>
       </p>
     </AuthCard>
   );
@@ -155,42 +173,24 @@ function RegisterPage() {
         {info ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{info}</p> : null}
         <label className="block text-sm font-semibold">
           Name
-          <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" required value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2.5" required value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <label className="block text-sm font-semibold">
           Email
-          <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2.5" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="block text-sm font-semibold">
           Password
-          <input className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2.5" type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="mt-1 w-full rounded-md border border-line bg-surface px-3 py-2.5" type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
         <button className="inline-flex w-full items-center justify-center rounded-md bg-forest py-2.5 font-semibold text-white" disabled={busy}>
           {busy ? <Spinner size="sm" /> : "Register"}
         </button>
       </form>
       <p className="mt-4 text-sm text-muted">
-        Already have an account? <Link to="/login">Sign in</Link>
+        Already have an account? <Link to="/login" className="font-semibold text-forest">Sign in</Link>
       </p>
     </AuthCard>
-  );
-}
-
-function AuthCard({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-3xl border border-line bg-white p-7 shadow-[0_24px_70px_rgb(15_23_42/0.10)] sm:p-9">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-forest text-sm font-extrabold text-white shadow-md">
-            A
-          </span>
-          <p className="text-lg font-bold tracking-[-0.03em] text-ink">Aether</p>
-        </div>
-        <h1 className="mt-8 text-3xl font-bold tracking-[-0.04em]">{title}</h1>
-        <p className="mt-2 mb-7 text-sm leading-6 text-muted">{subtitle}</p>
-        {children}
-      </div>
-    </div>
   );
 }
 
@@ -336,7 +336,7 @@ function DocumentPage() {
             <Link
               key={quiz.id}
               to={`/quizzes/${quiz.id}`}
-              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3 no-underline"
+              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3 no-underline"
             >
               <span>
                 {quiz.title} · {quiz.questionCount} questions
@@ -373,6 +373,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<Guard />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/spaces" element={<SpacesPage />} />

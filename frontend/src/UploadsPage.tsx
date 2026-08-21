@@ -65,15 +65,15 @@ export function UploadsPage() {
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
       {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
       {!loading && docs.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line bg-white/60 px-4 py-8 text-center text-muted">
+        <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
           No uploads yet. <Link to="/spaces">Open a space</Link> and add lecture notes.
         </p>
       ) : (
-        <div className="grid gap-3">
+        <div className="stagger grid gap-3">
           {docs.map((doc) => (
             <article
               key={doc.id}
-              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-forest/30 sm:flex-row sm:items-center sm:gap-5"
+              className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:gap-5"
             >
               <Link to={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-4 no-underline">
                 <FileBadge filename={doc.filename} />

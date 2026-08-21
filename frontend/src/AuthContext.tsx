@@ -9,6 +9,7 @@ type Auth = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<RegisterResult>;
+  requestPasswordReset: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   applyUser: (user: User) => void;
 };
@@ -163,6 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         return { needsEmailConfirmation: true };
+      },
+      requestPasswordReset: async (email) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw new Error(error.message);
       },
       logout: async () => {
         if (user) await recordAuthEvent("logout");

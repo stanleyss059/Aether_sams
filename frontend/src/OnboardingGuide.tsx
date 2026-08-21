@@ -46,7 +46,7 @@ export function OnboardingGuide({ open, name, onClose }: OnboardingGuideProps) {
       <button
         type="button"
         aria-label="Close welcome guide"
-        className="absolute inset-0 bg-ink/50 backdrop-blur-sm"
+        className="overlay-in absolute inset-0 bg-ink/50 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
@@ -54,7 +54,7 @@ export function OnboardingGuide({ open, name, onClose }: OnboardingGuideProps) {
         aria-modal="true"
         aria-labelledby="onboarding-title"
         aria-describedby="onboarding-description"
-        className="relative w-full max-w-2xl rounded-3xl border border-line bg-white p-6 shadow-[0_24px_80px_rgb(15_23_42/0.24)] sm:p-8"
+        className="morph-in relative w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-panel sm:p-8"
       >
         <button
           type="button"
