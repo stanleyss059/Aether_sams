@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, ApiError, type User } from "./api";
+import { clearPasswordRecovery, detectRecoveryLink, markPasswordRecovery } from "./password-recovery";
 import { supabase } from "./supabase";
 
 export type RegisterResult = { needsEmailConfirmation: boolean };
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    detectRecoveryLink();
 
     hydrateUser()
       .then((next) => {
@@ -90,12 +92,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        markPasswordRecovery();
+      }
       if (!session) {
+        clearPasswordRecovery();
         setUser(null);
         setLoading(false);
         return;
       }
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION" || event === "PASSWORD_RECOVERY") {
         void hydrateUser()
           .then((next) => setUser(next))
           .catch(() => setUser(null))
@@ -166,8 +172,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { needsEmailConfirmation: true };
       },
       requestPasswordReset: async (email) => {
+        const origin = window.location.origin.replace(/\/$/, "");
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${origin}/reset-password`,
         });
         if (error) throw new Error(error.message);
       },

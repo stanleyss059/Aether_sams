@@ -26,7 +26,18 @@ npm run dev
 
 4. Open **http://localhost:5174** and **Register** a new account (auth is handled by Supabase).
 
-In the Supabase dashboard, under **Authentication → Providers → Email**, you can turn off “Confirm email” for local testing so signup signs you in immediately. For password reset emails, add `http://localhost:5174/reset-password` and your live `/reset-password` URL under **Authentication → URL Configuration → Redirect URLs**.
+In the Supabase dashboard:
+
+1. Open **Authentication → URL Configuration**.
+2. Set **Site URL** to your live site, e.g. `https://your-app.vercel.app` (no trailing slash).
+3. Under **Redirect URLs**, add all of these (no trailing slash):
+   - `http://localhost:5174/reset-password`
+   - `https://your-app.vercel.app/reset-password`
+   - `https://your-app.vercel.app/**`
+   - `https://*.vercel.app/**` (covers preview deploys)
+4. Save, then request a **new** reset email. Old emails keep the previous redirect.
+
+If the link still opens a Vercel login wall, turn off **Deployment Protection** for Production in the Vercel project.
 
 ## Vercel deploy
 

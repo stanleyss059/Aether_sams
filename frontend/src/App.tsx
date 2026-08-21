@@ -10,6 +10,7 @@ import { DashboardPage } from "./DashboardPage";
 import { ForgotPasswordPage } from "./ForgotPasswordPage";
 import { NavBar } from "./NavBar";
 import { OnboardingGuide } from "./OnboardingGuide";
+import { isPasswordRecovery } from "./password-recovery";
 import { ProfilePage } from "./ProfilePage";
 import { QuizPage } from "./QuizPage";
 import { ResetPasswordPage } from "./ResetPasswordPage";
@@ -25,9 +26,26 @@ import { AdminAuditLogsPage } from "./admin/AdminAuditLogsPage";
 import { AdminProfilePage } from "./admin/AdminProfilePage";
 import { LoadingState, Spinner } from "./Spinner";
 
+function RecoveryRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isPasswordRecovery()) return;
+    if (location.pathname === "/reset-password") return;
+    navigate(
+      { pathname: "/reset-password", search: location.search, hash: location.hash },
+      { replace: true },
+    );
+  }, [location.hash, location.pathname, location.search, navigate]);
+
+  return null;
+}
+
 function Guard() {
   const { user, loading } = useAuth();
   if (loading) return <LoadingState className="flex min-h-screen items-center justify-center p-8" />;
+  if (isPasswordRecovery()) return <Navigate to="/reset-password" replace />;
   if (!user) return <Navigate to="/login" replace />;
   return <Shell />;
 }
@@ -370,6 +388,7 @@ function DocumentPage() {
 export default function App() {
   return (
     <AuthProvider>
+      <RecoveryRedirect />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

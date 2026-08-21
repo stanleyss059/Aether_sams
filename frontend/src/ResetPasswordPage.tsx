@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthCard } from "./AuthCard";
+import { clearPasswordRecovery } from "./password-recovery";
 import { supabase } from "./supabase";
 import { LoadingState, Spinner } from "./Spinner";
 
@@ -78,6 +79,7 @@ export function ResetPasswordPage() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw new Error(updateError.message);
+      clearPasswordRecovery();
       await supabase.auth.signOut();
       navigate("/login", {
         replace: true,
