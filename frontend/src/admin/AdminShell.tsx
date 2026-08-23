@@ -56,7 +56,7 @@ export function AdminShell() {
         </Link>
       </div>
 
-      <nav className="overflow-x-auto rounded-2xl border border-line bg-surface p-1.5 shadow-sm">
+      <nav className="card overflow-x-auto rounded-2xl border border-line bg-surface p-1.5">
         <div className="flex min-w-max gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;

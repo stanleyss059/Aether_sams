@@ -37,7 +37,7 @@ export function FilterBar({
 }) {
   return (
     <form
-      className="rounded-2xl border border-line bg-surface p-3 sm:p-3.5"
+      className="card rounded-2xl border border-line bg-surface p-3 sm:p-3.5"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -83,7 +83,7 @@ export function LoadingRows(_props: { rows?: number } = {}) {
 
 export function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-line bg-surface/60 px-4 py-12 text-center">
+    <div className="card-empty px-4 py-12 text-center">
       <p className="font-bold text-ink">{title}</p>
       <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted">{description}</p>
     </div>
@@ -92,7 +92,7 @@ export function EmptyState({ title, description }: { title: string; description:
 
 export function RowCard({ children }: { children: ReactNode }) {
   return (
-    <div className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
       {children}
     </div>
   );
@@ -107,7 +107,7 @@ export function Avatar({ name }: { name: string }) {
     .join("");
   return (
     <span
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-forest/10 text-sm font-bold text-forest"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-forest/10 text-sm font-bold text-forest ring-1 ring-forest/15"
       aria-hidden="true"
     >
       {initials || "?"}
@@ -158,7 +158,7 @@ export function Pager({
 }) {
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5">
+    <div className="card flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5">
       <button
         type="button"
         className="rounded-lg border border-line px-3.5 py-2 text-sm font-semibold disabled:opacity-50"

@@ -1,5 +1,7 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { Errors } from "../lib/errors.js";
 import { ownedQuiz } from "../lib/study.js";
 import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
 
@@ -25,7 +27,34 @@ quizzesRouter.get(
           id: question.id,
           prompt: question.prompt,
           options: JSON.parse(question.options) as string[],
+          correctIndex: question.correctIndex,
+          explanation: question.explanation,
         })),
+      },
+    });
+  }),
+);
+
+quizzesRouter.post(
+  "/quizzes/:id/check",
+  asyncHandler(async (req, res) => {
+    const body = z.object({
+      questionId: z.string().min(1),
+      selectedIndex: z.number().int().min(0).max(3),
+    }).parse(req.body);
+    await ownedQuiz(req.user!.id, req.params.id);
+    const question = await prisma.question.findFirst({
+      where: { id: body.questionId, quizId: req.params.id },
+    });
+    if (!question) throw Errors.notFound("Question not found.");
+    res.json({
+      success: true,
+      data: {
+        questionId: question.id,
+        selectedIndex: body.selectedIndex,
+        correctIndex: question.correctIndex,
+        correct: body.selectedIndex === question.correctIndex,
+        explanation: question.explanation,
       },
     });
   }),

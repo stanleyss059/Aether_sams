@@ -30,12 +30,16 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8">
-        <span className="inline-flex rounded-full bg-forest/10 px-2.5 py-1 text-xs font-bold text-forest">DASHBOARD</span>
-        <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Welcome back, {firstName}</h1>
-        <p className="mt-2 max-w-2xl leading-7 text-muted">
-          Pick up a course space, or generate a quiz from something you already uploaded.
-        </p>
+      <div className="card relative overflow-hidden rounded-3xl border border-line bg-surface p-6 sm:p-8">
+        <div className="pointer-events-none absolute -top-20 right-0 h-52 w-52 rounded-full bg-forest/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-10 h-40 w-40 rounded-full bg-gold/10 blur-3xl" />
+        <div className="relative">
+          <span className="inline-flex rounded-full bg-forest/10 px-2.5 py-1 text-xs font-bold text-forest">DASHBOARD</span>
+          <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Welcome back, {firstName}</h1>
+          <p className="mt-2 max-w-2xl leading-7 text-muted">
+            Pick up a course space, or generate a quiz from something you already uploaded.
+          </p>
+        </div>
       </div>
 
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
@@ -58,7 +62,7 @@ export function DashboardPage() {
           </Link>
         </div>
         {library && library.spaces.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
+          <p className="card-empty px-4 py-10 text-center text-muted">
             No spaces yet. <Link to="/spaces">Create a course deck</Link> to group related notes.
           </p>
         ) : (
@@ -102,7 +106,7 @@ export function DashboardPage() {
           </Link>
         </div>
         {docs.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
+          <p className="card-empty px-4 py-10 text-center text-muted">
             Nothing uploaded yet. Open a space and add lecture notes.
           </p>
         ) : (
@@ -138,10 +142,12 @@ function Stat({ label, value, to }: { label: string; value: number; to: string }
       to={to}
       className="lift-card group rounded-2xl border border-line bg-surface p-5 no-underline"
     >
-      <p className="text-xs font-bold tracking-[0.12em] text-muted uppercase">{label}</p>
-      <div className="mt-3 flex items-end justify-between">
-        <p className="text-4xl font-bold tracking-[-0.05em] text-ink">{value}</p>
-        <span className="text-lg text-forest transition group-hover:translate-x-0.5">→</span>
+      <p className="text-xs font-bold tracking-[0.14em] text-muted uppercase">{label}</p>
+      <div className="mt-4 flex items-end justify-between">
+        <p className="text-4xl font-bold tracking-[-0.06em] text-ink">{value}</p>
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-forest/10 text-forest transition group-hover:translate-x-0.5">
+          →
+        </span>
       </div>
     </Link>
   );

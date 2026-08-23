@@ -161,7 +161,7 @@ export function ProfilePage() {
       {message ? <p className="rounded-xl bg-forest/10 px-4 py-3 text-sm font-medium text-forest">{message}</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
+        <section className="card rounded-3xl border border-line bg-surface p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest/10 text-forest">
               <IconProfile className="h-5 w-5" />
@@ -200,7 +200,7 @@ export function ProfilePage() {
           </form>
         </section>
 
-        <section className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
+        <section className="card rounded-3xl border border-line bg-surface p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 text-gold">
               <IconLock className="h-5 w-5" />
@@ -258,7 +258,7 @@ export function ProfilePage() {
         </section>
       </div>
 
-      <section className="rounded-3xl border border-danger/20 bg-danger/[0.04] p-5 sm:p-6">
+      <section className="card-danger p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger/10 text-danger">
@@ -285,7 +285,7 @@ export function ProfilePage() {
 
 function MiniStat({ label, value, to }: { label: string; value: number | null; to: string }) {
   return (
-    <Link to={to} className="lift-card rounded-2xl border border-line bg-parchment/70 px-4 py-3.5 no-underline">
+    <Link to={to} className="lift-card card-inset rounded-2xl px-4 py-3.5 no-underline">
       <p className="text-[11px] font-bold tracking-[0.14em] text-muted uppercase">{label}</p>
       <p className="mt-1 text-2xl font-bold tracking-[-0.04em] text-ink">{value ?? "—"}</p>
     </Link>

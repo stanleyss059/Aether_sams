@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type DocListItem } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
+import { GenerateQuizModal } from "./GenerateQuizModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
-import { LoadingState } from "./Spinner";
+import { LoadingState, Spinner } from "./Spinner";
 
 export function UploadsPage() {
   const [docs, setDocs] = useState<DocListItem[]>([]);
@@ -12,6 +13,8 @@ export function UploadsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notingId, setNotingId] = useState<string | null>(null);
   const [pending, setPending] = useState<DocListItem | null>(null);
+  const [quizTarget, setQuizTarget] = useState<DocListItem | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,6 +39,24 @@ export function UploadsPage() {
       setError(err instanceof ApiError ? err.message : "Could not generate notes from that upload.");
     } finally {
       setNotingId(null);
+    }
+  }
+
+  async function generateQuiz(count: number) {
+    if (!quizTarget) return;
+    const docId = quizTarget.id;
+    setGeneratingId(docId);
+    setError("");
+    try {
+      const data = await api<{ quizId: string }>(`/api/documents/${docId}/generate`, {
+        method: "POST",
+        body: JSON.stringify({ count }),
+      });
+      setQuizTarget(null);
+      navigate(`/quizzes/${data.quizId}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not generate a quiz from that upload.");
+      setGeneratingId(null);
     }
   }
 
@@ -65,7 +86,7 @@ export function UploadsPage() {
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
       {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
       {!loading && docs.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
+        <p className="card-empty px-4 py-12 text-center text-muted">
           No uploads yet. <Link to="/spaces">Open a space</Link> and add lecture notes.
         </p>
       ) : (
@@ -73,7 +94,7 @@ export function UploadsPage() {
           {docs.map((doc) => (
             <article
               key={doc.id}
-              className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:gap-5"
+              className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
             >
               <Link to={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-4 no-underline">
                 <FileBadge filename={doc.filename} />
@@ -95,12 +116,28 @@ export function UploadsPage() {
                 </div>
               </Link>
               <div className="flex shrink-0 flex-wrap gap-2">
-                <Link
-                  to={doc.latestQuizId ? `/quizzes/${doc.latestQuizId}` : `/documents/${doc.id}`}
-                  className="rounded-lg bg-forest px-4 py-2 text-center text-sm font-semibold text-white no-underline"
+                {doc.latestQuizId ? (
+                  <Link
+                    to={`/quizzes/${doc.latestQuizId}`}
+                    className="rounded-lg bg-forest px-4 py-2 text-center text-sm font-semibold text-white no-underline"
+                  >
+                    Attempt quiz
+                  </Link>
+                ) : null}
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-lg border border-forest/40 px-4 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
+                  disabled={generatingId !== null}
+                  onClick={() => setQuizTarget(doc)}
                 >
-                  {doc.latestQuizId ? "Attempt quiz" : "Generate quiz"}
-                </Link>
+                  {generatingId === doc.id ? (
+                    <Spinner size="sm" className="text-forest" />
+                  ) : doc.latestQuizId ? (
+                    "New quiz"
+                  ) : (
+                    "Generate quiz"
+                  )}
+                </button>
                 <ViewNoteButton
                   documentId={doc.id}
                   hasNotes={Boolean(doc.summary?.trim())}
@@ -122,6 +159,15 @@ export function UploadsPage() {
         </div>
       )}
 
+      <GenerateQuizModal
+        open={Boolean(quizTarget)}
+        title={quizTarget?.title}
+        busy={Boolean(quizTarget && generatingId === quizTarget.id)}
+        onCancel={() => {
+          if (!generatingId) setQuizTarget(null);
+        }}
+        onGenerate={generateQuiz}
+      />
       <ConfirmModal
         open={Boolean(pending)}
         title={`Delete “${pending?.title ?? ""}”?`}

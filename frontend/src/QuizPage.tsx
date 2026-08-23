@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { LoadingState, Spinner } from "./Spinner";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
+
+type QuizQuestion = {
+  id: string;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+};
+
+type Reveal = {
+  selectedIndex: number;
+  correctIndex: number;
+  correct: boolean;
+  explanation: string;
+};
 
 type Draft = { answers: Record<string, number>; index: number };
 
@@ -31,11 +46,30 @@ function clearDraft(quizId: string) {
   localStorage.removeItem(draftKey(quizId));
 }
 
+function gradeChoice(question: QuizQuestion, choice: number): Reveal {
+  return {
+    selectedIndex: choice,
+    correctIndex: question.correctIndex,
+    correct: choice === question.correctIndex,
+    explanation: question.explanation ?? "",
+  };
+}
+
+function revealsFromAnswers(questions: QuizQuestion[], answers: Record<string, number>) {
+  const reveals: Record<string, Reveal> = {};
+  for (const question of questions) {
+    const choice = answers[question.id];
+    if (choice === undefined) continue;
+    reveals[question.id] = gradeChoice(question, choice);
+  }
+  return reveals;
+}
+
 type Quiz = {
   title: string;
   documentId: string;
   documentTitle: string;
-  questions: Array<{ id: string; prompt: string; options: string[] }>;
+  questions: QuizQuestion[];
 };
 
 type ReviewItem = {
@@ -65,6 +99,16 @@ export function QuizPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+
+  const reveals = useMemo(
+    () => (quiz ? revealsFromAnswers(quiz.questions, answers) : {}),
+    [quiz, answers],
+  );
+
+  const chooseAnswer = useCallback((questionId: string, choice: number) => {
+    setAnswers((prev) => (prev[questionId] !== undefined ? prev : { ...prev, [questionId]: choice }));
+    setConfirmSubmit(false);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -114,13 +158,13 @@ export function QuizPage() {
         const numeric = Number(e.key) - 1;
         const choice = letter >= 0 ? letter : numeric;
         if (choice >= 0 && choice < question.options.length) {
-          setAnswers((prev) => ({ ...prev, [question.id]: choice }));
+          chooseAnswer(question.id, choice);
         }
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [quiz, result, question]);
+  }, [quiz, result, question, chooseAnswer]);
 
   async function submit() {
     if (!quiz) return;
@@ -167,6 +211,8 @@ export function QuizPage() {
 
   const progress = Math.round((answeredCount / quiz.questions.length) * 100);
   const selected = answers[question.id];
+  const reveal = reveals[question.id];
+  const locked = Boolean(reveal);
 
   return (
     <div className="space-y-5">
@@ -195,39 +241,71 @@ export function QuizPage() {
       {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_16rem]">
-        <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-7">
+        <section className="card rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-7">
           <div key={question.id} className="morph-in">
           <p className="font-serif text-5xl leading-none text-gold">{index + 1}</p>
           <h2 className="mt-4 font-serif text-2xl leading-snug">{question.prompt}</h2>
           <div className="mt-6 space-y-3">
             {question.options.map((opt, i) => {
-              const active = selected === i;
+              const picked = selected === i;
+              const isCorrect = Boolean(reveal && i === reveal.correctIndex);
+              const isWrongPick = Boolean(reveal && picked && !isCorrect);
               return (
                 <button
                   key={`${question.id}-${i}`}
                   type="button"
-                  onClick={() => {
-                    setAnswers((prev) => ({ ...prev, [question.id]: i }));
-                    setConfirmSubmit(false);
-                  }}
-                  className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition ${
-                    active
-                      ? "border-forest bg-forest/10 ring-2 ring-forest"
-                      : "border-line bg-parchment/40 hover:border-forest/40 hover:bg-surface"
+                  disabled={locked}
+                    onClick={() => chooseAnswer(question.id, i)}
+                  className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition disabled:cursor-default ${
+                    isCorrect
+                      ? "border-forest bg-forest/10 font-semibold text-forest"
+                      : isWrongPick
+                        ? "border-danger bg-danger/10 text-danger"
+                        : picked
+                          ? "border-forest bg-forest/10 ring-2 ring-forest"
+                          : "card-inset hover:border-forest/40 disabled:hover:border-line"
                   }`}
                 >
                   <span
                     className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md text-sm font-bold ${
-                      active ? "bg-forest text-white" : "bg-surface text-forest ring-1 ring-line"
+                      isCorrect
+                        ? "bg-forest text-white"
+                        : isWrongPick
+                          ? "bg-danger text-white"
+                          : picked
+                            ? "bg-forest text-white"
+                            : "bg-surface text-forest ring-1 ring-line"
                     }`}
                   >
                     {LETTERS[i]}
                   </span>
-                  <span className="pt-1 leading-relaxed">{opt}</span>
+                  <span className="pt-1 leading-relaxed">
+                    {opt}
+                    {isCorrect ? " · correct" : ""}
+                    {isWrongPick ? " · your answer" : ""}
+                  </span>
                 </button>
               );
             })}
           </div>
+
+          {reveal ? (
+            <div
+              className={`mt-5 rounded-xl px-4 py-3 text-sm leading-relaxed ${
+                reveal.correct ? "bg-forest/10 text-forest" : "bg-danger/10 text-danger"
+              }`}
+            >
+              <p className="font-semibold">{reveal.correct ? "Correct" : "Incorrect"}</p>
+              {!reveal.correct ? (
+                <p className="mt-1">
+                  The right answer is {LETTERS[reveal.correctIndex]}: {question.options[reveal.correctIndex]}
+                </p>
+              ) : null}
+              {reveal.explanation ? (
+                <p className={`mt-2 ${reveal.correct ? "text-forest/90" : "text-ink"}`}>{reveal.explanation}</p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-8 flex items-center justify-between gap-3">
             <button
@@ -257,16 +335,19 @@ export function QuizPage() {
               </button>
             )}
           </div>
-          <p className="mt-4 text-xs text-muted">Use A–D or 1–4 to choose. Arrow keys move between questions.</p>
+          <p className="mt-4 text-xs text-muted">
+            Choose an answer to see if it is correct. Use A–D or 1–4 to choose. Arrow keys move between questions.
+          </p>
           </div>
         </section>
 
-        <aside className="rounded-2xl border border-line bg-surface p-4">
+        <aside className="card rounded-2xl border border-line bg-surface p-4">
           <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-muted uppercase">Jump to</p>
           <div className="grid grid-cols-10 gap-1.5 lg:grid-cols-5">
             {quiz.questions.map((q, i) => {
               const filled = answers[q.id] !== undefined;
               const current = i === index;
+              const revealState = reveals[q.id];
               return (
                 <button
                   key={q.id}
@@ -276,9 +357,13 @@ export function QuizPage() {
                   className={`h-8 rounded-md text-xs font-semibold ${
                     current
                       ? "bg-gold text-ink"
-                      : filled
-                        ? "bg-forest text-white"
-                        : "bg-parchment text-muted ring-1 ring-line"
+                      : revealState
+                        ? revealState.correct
+                          ? "bg-forest text-white"
+                          : "bg-danger text-white"
+                        : filled
+                          ? "bg-forest text-white"
+                          : "bg-parchment text-muted ring-1 ring-line"
                   }`}
                 >
                   {i + 1}
@@ -291,7 +376,10 @@ export function QuizPage() {
               <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-gold align-middle" /> Current
             </p>
             <p>
-              <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-forest align-middle" /> Answered
+              <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-forest align-middle" /> Correct
+            </p>
+            <p>
+              <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-danger align-middle" /> Incorrect
             </p>
             <p>
               <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-parchment ring-1 ring-line align-middle" />{" "}
@@ -343,7 +431,7 @@ function ResultsView({
         ← {quiz.documentTitle}
       </Link>
 
-      <section className="grid gap-5 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-[auto_1fr] sm:items-center">
+      <section className="card grid gap-5 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-[auto_1fr] sm:items-center">
         <ScoreRing percent={percent} tone={tone} />
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Results</p>
@@ -391,7 +479,7 @@ function ResultsView({
           return (
             <article
               key={item.id}
-              className={`rounded-2xl border bg-surface p-5 ${
+              className={`card rounded-2xl border p-5 ${
                 item.correct ? "border-forest/30" : "border-danger/30"
               }`}
             >

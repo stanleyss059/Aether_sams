@@ -62,6 +62,15 @@ function isBullet(line: string) {
   return /^[-•*]\s+/.test(line.trim());
 }
 
+function blockHasContent(block: Block) {
+  if (block.kind === "paragraph") return Boolean(block.text.trim());
+  return block.items.length > 0;
+}
+
+function sectionHasContent(section: NoteSection) {
+  return section.blocks.some(blockHasContent);
+}
+
 function flushGroup(kind: "paragraph" | "bullets" | "terms", lines: string[], blocks: Block[]) {
   if (lines.length === 0) return;
   if (kind === "paragraph") {
@@ -90,9 +99,8 @@ export function parseStudyNotes(text: string): NoteSection[] {
     if (groupKind) flushGroup(groupKind, group, blocks);
     groupKind = null;
     group = [];
-    if (blocks.length || sections.length) {
-      sections.push({ title, blocks });
-    }
+    const next = { title, blocks: blocks.filter(blockHasContent) };
+    if (sectionHasContent(next)) sections.push(next);
     title = nextTitle;
     blocks = [];
   }
@@ -120,8 +128,10 @@ export function parseStudyNotes(text: string): NoteSection[] {
     group.push(line);
   }
   if (groupKind) flushGroup(groupKind, group, blocks);
-  if (blocks.length) sections.push({ title, blocks });
-  return sections.length ? sections : [{ title: "Notes", blocks: [{ kind: "paragraph", text: text.trim() }] }];
+  const last = { title, blocks: blocks.filter(blockHasContent) };
+  if (sectionHasContent(last)) sections.push(last);
+  const visible = sections.filter(sectionHasContent);
+  return visible.length ? visible : text.trim() ? [{ title: "Notes", blocks: [{ kind: "paragraph", text: text.trim() }] }] : [];
 }
 
 function Blocks({ blocks }: { blocks: Block[] }) {
@@ -139,7 +149,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
           return (
             <div key={index} className="grid gap-2 sm:grid-cols-2">
               {block.items.map((item) => (
-                <div key={item.term} className="rounded-xl border border-line bg-parchment/80 px-3.5 py-3">
+                <div key={item.term} className="card-inset px-3.5 py-3">
                   <p className="text-sm font-bold text-ink">{item.term}</p>
                   <p className="mt-1 text-sm leading-6 text-muted">{item.definition}</p>
                 </div>
@@ -169,7 +179,7 @@ export function StudyNotes({
   notes: string;
   loading?: boolean;
 }) {
-  const sections = notes.trim() ? parseStudyNotes(notes) : [];
+  const sections = notes.trim() ? parseStudyNotes(notes).filter(sectionHasContent) : [];
 
   return (
     <section className="space-y-3">
@@ -190,13 +200,13 @@ export function StudyNotes({
       {loading && !sections.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {[0, 1, 2].map((key) => (
-            <div key={key} className="h-40 animate-pulse rounded-2xl border border-line bg-surface" />
+            <div key={key} className="card h-40 animate-pulse rounded-2xl border border-line bg-surface" />
           ))}
         </div>
       ) : null}
 
       {!loading && !sections.length ? (
-        <p className="rounded-2xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
+        <p className="card-empty px-4 py-10 text-center text-muted">
           Notes are not ready yet.
         </p>
       ) : null}
@@ -208,7 +218,7 @@ export function StudyNotes({
           return (
             <article
               key={`${section.title}-${index}`}
-              className={`overflow-hidden rounded-2xl border border-line bg-surface ${featured ? "lg:col-span-2" : ""}`}
+              className={`card overflow-hidden rounded-2xl border border-line bg-surface ${featured ? "lg:col-span-2" : ""}`}
             >
               <div className={`h-1.5 ${look.bar}`} />
               <div className="p-5 sm:p-6">

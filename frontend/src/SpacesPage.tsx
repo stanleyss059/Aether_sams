@@ -60,7 +60,7 @@ export function SpacesPage() {
       </div>
 
       {creating ? (
-        <form className="morph-in rounded-2xl border border-line bg-surface p-5 shadow-sm" onSubmit={onCreate}>
+        <form className="card morph-in rounded-2xl border border-line bg-surface p-5 sm:p-6" onSubmit={onCreate}>
           {error ? <p className="mb-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
@@ -117,7 +117,7 @@ export function SpacesPage() {
 
       {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
       {!loading && spaces.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-10 text-center text-muted">
+        <p className="card-empty px-4 py-12 text-center text-muted">
           No spaces yet. Click New space to add a course deck.
         </p>
       ) : (
@@ -131,7 +131,7 @@ export function SpacesPage() {
                 className="lift-card group flex overflow-hidden rounded-2xl border border-line bg-surface no-underline"
               >
                 <div className={`w-1.5 shrink-0 ${look.bar}`} />
-                <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                   <div className="min-w-0">
                     {space.courseCode ? (
                       <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${look.chip}`}>{space.courseCode}</span>
@@ -158,7 +158,7 @@ export function SpacesPage() {
 
 function SpaceStat({ value, label }: { value: number; label: string }) {
   return (
-    <div className="text-right">
+    <div className="card-inset min-w-16 px-3 py-2 text-right">
       <p className="text-lg font-bold tracking-[-0.03em] text-ink">{value}</p>
       <p className="text-xs font-semibold text-muted">{label}</p>
     </div>

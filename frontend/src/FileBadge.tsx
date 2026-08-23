@@ -23,7 +23,7 @@ export function FileBadge({ filename, className = "" }: { filename: string; clas
   const look = STYLES[extension] ?? "bg-slate/10 text-slate";
   return (
     <span
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold uppercase ${look} ${className}`}
+      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[10px] font-extrabold tracking-wider uppercase ring-1 ring-line/80 ${look} ${className}`}
       aria-hidden="true"
     >
       {extension.slice(0, 4)}

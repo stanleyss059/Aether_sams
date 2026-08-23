@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError, type User } from "./api";
-import { clearPasswordRecovery, detectRecoveryLink, markPasswordRecovery } from "./password-recovery";
+import { clearPasswordRecovery, detectRecoveryLink, isPasswordRecovery, markPasswordRecovery } from "./password-recovery";
 import { supabase } from "./supabase";
 
 export type RegisterResult = { needsEmailConfirmation: boolean };
@@ -16,6 +16,8 @@ type Auth = {
 };
 
 const Ctx = createContext<Auth | null>(null);
+const IDLE_MS = 5 * 60 * 1000;
+const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "touchstart", "click", "wheel"] as const;
 
 async function fetchLocalUser(): Promise<User | null> {
   const me = await api<{ user: User | null }>("/api/auth/me");
@@ -75,6 +77,22 @@ async function recordAuthEvent(event: "login" | "logout") {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  async function signOutQuietly() {
+    try {
+      if (userRef.current) await recordAuthEvent("logout");
+    } catch {
+      // Still clear the tab session.
+    }
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      // Storage may already be gone (tab closing).
+    }
+    setUser(null);
+  }
 
   useEffect(() => {
     let active = true;
@@ -114,6 +132,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user || isPasswordRecovery()) return;
+
+    let idleTimer = 0;
+    let armedAt = 0;
+
+    function armIdleTimer() {
+      window.clearTimeout(idleTimer);
+      armedAt = Date.now();
+      idleTimer = window.setTimeout(() => {
+        void signOutQuietly();
+      }, IDLE_MS);
+    }
+
+    function onActivity() {
+      if (Date.now() - armedAt < 1000) return;
+      armIdleTimer();
+    }
+
+    armIdleTimer();
+    for (const event of ACTIVITY_EVENTS) {
+      window.addEventListener(event, onActivity, { passive: true });
+    }
+
+    return () => {
+      window.clearTimeout(idleTimer);
+      for (const event of ACTIVITY_EVENTS) {
+        window.removeEventListener(event, onActivity);
+      }
+    };
+  }, [user]);
 
   const value = useMemo<Auth>(
     () => ({

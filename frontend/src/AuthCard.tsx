@@ -16,7 +16,7 @@ export function AuthCard({
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <div className="auth-card page-enter w-full max-w-md rounded-3xl border border-line bg-surface p-7 shadow-panel sm:p-9">
+      <div className="auth-card card page-enter w-full max-w-md rounded-3xl border border-line bg-surface p-7 shadow-panel sm:p-9">
         <div className="flex items-center gap-3">
           <BrandLogo className="h-12 w-12" />
           <p className="text-lg font-bold tracking-[-0.03em] text-ink">Aether</p>

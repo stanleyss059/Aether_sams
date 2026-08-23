@@ -40,7 +40,7 @@ export function AdminDashboardPage() {
           </Link>
         </div>
         {recentActivity.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line bg-surface/60 px-4 py-8 text-center text-muted">
+          <p className="card-empty px-4 py-10 text-center text-muted">
             No activity recorded yet.
           </p>
         ) : (
@@ -66,7 +66,7 @@ function Stat({ label, value, to }: { label: string; value: number; to: string }
 
 function ActivityRow({ entry }: { entry: AuditLogEntry }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3">
+    <div className="card rounded-xl border border-line bg-surface px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold text-ink">{entry.action}</p>
         <p className="text-xs text-muted">{new Date(entry.createdAt).toLocaleString()}</p>

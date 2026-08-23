@@ -54,7 +54,7 @@ export function OnboardingGuide({ open, name, onClose }: OnboardingGuideProps) {
         aria-modal="true"
         aria-labelledby="onboarding-title"
         aria-describedby="onboarding-description"
-        className="morph-in relative w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-panel sm:p-8"
+        className="card morph-in relative w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-panel sm:p-8"
       >
         <button
           type="button"
@@ -76,7 +76,7 @@ export function OnboardingGuide({ open, name, onClose }: OnboardingGuideProps) {
 
         <div className="mt-7 grid gap-3 sm:grid-cols-3">
           {steps.map((step) => (
-            <div key={step.number} className="rounded-2xl border border-line bg-slate/5 p-4">
+            <div key={step.number} className="card-inset p-4">
               <span className="text-xs font-extrabold tracking-[0.12em] text-forest">{step.number}</span>
               <h3 className="mt-3 font-bold text-ink">{step.title}</h3>
               <p className="mt-1.5 text-sm leading-6 text-muted">{step.description}</p>

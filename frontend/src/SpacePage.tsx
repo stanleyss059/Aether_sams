@@ -4,6 +4,7 @@ import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type Accent, type SpaceDetail, type SpaceSummary } from "./api";
 import { uploadDocument } from "./documents";
 import { ConfirmModal } from "./ConfirmModal";
+import { GenerateQuizModal } from "./GenerateQuizModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 import { LoadingState, Spinner } from "./Spinner";
 import { UploadProgressBar, type UploadProgress } from "./UploadProgressBar";
@@ -26,6 +27,7 @@ export function SpacePage() {
   const [description, setDescription] = useState("");
   const [accent, setAccent] = useState<Accent>("forest");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [quizTarget, setQuizTarget] = useState<{ id: string; title: string } | null>(null);
   const [notingId, setNotingId] = useState<string | null>(null);
   const [upload, setUpload] = useState<UploadProgress | null>(null);
   const [pending, setPending] = useState<PendingDelete | null>(null);
@@ -182,14 +184,17 @@ export function SpacePage() {
     }
   }
 
-  async function generateQuiz(docId: string) {
+  async function generateQuiz(count: number) {
+    if (!quizTarget) return;
+    const docId = quizTarget.id;
     setGeneratingId(docId);
     setError("");
     try {
       const data = await api<{ quizId: string }>(`/api/documents/${docId}/generate`, {
         method: "POST",
-        body: JSON.stringify({ count: 50 }),
+        body: JSON.stringify({ count }),
       });
+      setQuizTarget(null);
       navigate(`/quizzes/${data.quizId}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate a quiz from that upload.");
@@ -296,7 +301,7 @@ export function SpacePage() {
       {!upload && message ? <p className="rounded-md bg-forest/10 px-3 py-2 text-sm text-forest">{message}</p> : null}
 
       {editing ? (
-        <form className="rounded-2xl border border-line bg-surface p-5" onSubmit={saveEdit}>
+        <form className="card rounded-2xl border border-line bg-surface p-5 sm:p-6" onSubmit={saveEdit}>
           <h2 className="text-xl font-bold tracking-[-0.03em]">Edit space</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
@@ -363,7 +368,7 @@ export function SpacePage() {
       <section>
         <h2 className="text-xl font-bold tracking-[-0.03em]">Uploaded materials</h2>
         {space.documents.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-dashed border-line bg-surface/60 px-4 py-10 text-center text-muted">
+          <p className="card-empty mt-3 px-4 py-12 text-center text-muted">
             Nothing in this space yet. Click Upload to add a PDF, Word, PowerPoint, or notes.
           </p>
         ) : (
@@ -371,7 +376,7 @@ export function SpacePage() {
             {space.documents.map((doc) => (
               <article
                 key={doc.id}
-                className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:gap-5"
+                className="lift-card flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
               >
                 <Link to={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-4 no-underline">
                   <FileBadge filename={doc.filename} />
@@ -400,7 +405,7 @@ export function SpacePage() {
                     type="button"
                     className="inline-flex items-center justify-center rounded-lg border border-forest/40 px-4 py-2 text-sm font-semibold text-forest hover:bg-forest/5 disabled:opacity-60"
                     disabled={busy || generatingId !== null}
-                    onClick={() => generateQuiz(doc.id)}
+                    onClick={() => setQuizTarget({ id: doc.id, title: doc.title })}
                   >
                     {generatingId === doc.id ? (
                       <Spinner size="sm" className="text-forest" />
@@ -432,6 +437,15 @@ export function SpacePage() {
         )}
       </section>
 
+      <GenerateQuizModal
+        open={Boolean(quizTarget)}
+        title={quizTarget?.title}
+        busy={Boolean(quizTarget && generatingId === quizTarget.id)}
+        onCancel={() => {
+          if (!generatingId) setQuizTarget(null);
+        }}
+        onGenerate={generateQuiz}
+      />
       <ConfirmModal
         open={Boolean(pending)}
         title={modalTitle}

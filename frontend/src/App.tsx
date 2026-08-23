@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import { AuthCard } from "./AuthCard";
 import { api, ApiError, type DocDetail } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
+import { GenerateQuizModal } from "./GenerateQuizModal";
 import { SaveDocumentButton } from "./FileBadge";
 import { StudyNotes } from "./StudyNotes";
 import { DashboardPage } from "./DashboardPage";
@@ -90,7 +91,7 @@ function Shell() {
       <NavBar />
       <main
         key={pathname.startsWith("/admin") ? "admin" : pathname}
-        className="page-enter mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10"
+        className="page-enter mx-auto max-w-6xl py-8 pr-4 pl-[5.5rem] sm:py-10 md:px-6"
       >
         <Outlet />
       </main>
@@ -220,6 +221,7 @@ function DocumentPage() {
   const [busy, setBusy] = useState(false);
   const [notesBusy, setNotesBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
   const notesRequested = useRef("");
 
   async function load() {
@@ -265,14 +267,15 @@ function DocumentPage() {
     };
   }, [id, doc]);
 
-  async function generate() {
+  async function generate(count: number) {
     setBusy(true);
     setError("");
     try {
       const data = await api<{ quizId: string }>(`/api/documents/${id}/generate`, {
         method: "POST",
-        body: JSON.stringify({ count: 50 }),
+        body: JSON.stringify({ count }),
       });
+      setQuizModalOpen(false);
       await load();
       navigate(`/quizzes/${data.quizId}`);
     } catch (err) {
@@ -320,9 +323,9 @@ function DocumentPage() {
         <button
           className="inline-flex items-center justify-center rounded-md bg-forest px-4 py-2.5 font-semibold text-white disabled:opacity-60"
           disabled={busy}
-          onClick={generate}
+          onClick={() => setQuizModalOpen(true)}
         >
-          {busy ? <Spinner size="sm" /> : "Generate 50 MCQs from this file"}
+          Generate quiz
         </button>
         <SaveDocumentButton
           documentId={doc.id}
@@ -354,7 +357,7 @@ function DocumentPage() {
             <Link
               key={quiz.id}
               to={`/quizzes/${quiz.id}`}
-              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3 no-underline"
+              className="lift-card flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-4 no-underline"
             >
               <span>
                 {quiz.title} · {quiz.questionCount} questions
@@ -370,6 +373,15 @@ function DocumentPage() {
         </div>
       </section>
 
+      <GenerateQuizModal
+        open={quizModalOpen}
+        title={doc.title}
+        busy={busy && quizModalOpen}
+        onCancel={() => {
+          if (!busy) setQuizModalOpen(false);
+        }}
+        onGenerate={generate}
+      />
       <ConfirmModal
         open={confirmOpen}
         title={`Delete “${doc.title}”?`}
