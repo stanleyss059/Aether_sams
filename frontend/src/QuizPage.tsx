@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "./api";
+import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
@@ -66,11 +67,21 @@ function revealsFromAnswers(questions: QuizQuestion[], answers: Record<string, n
 }
 
 type Quiz = {
+  id: string;
   title: string;
   documentId: string | null;
   documentTitle: string | null;
+  isOwner: boolean;
+  authorName: string;
   questions: QuizQuestion[];
 };
+
+function quizHome(quiz: Pick<Quiz, "isOwner" | "documentId" | "documentTitle">) {
+  if (quiz.isOwner && quiz.documentId) {
+    return { to: `/documents/${quiz.documentId}`, label: quiz.documentTitle ?? "Upload" };
+  }
+  return { to: "/quizzes", label: "Quizzes" };
+}
 
 type ReviewItem = {
   id: string;
@@ -213,22 +224,26 @@ export function QuizPage() {
   const selected = answers[question.id];
   const reveal = reveals[question.id];
   const locked = Boolean(reveal);
+  const home = quizHome(quiz);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link
-            to={quiz.documentId ? `/documents/${quiz.documentId}` : "/quizzes"}
-            className="text-sm text-muted no-underline hover:text-forest"
-          >
-            ← {quiz.documentTitle ?? "Quizzes"}
+          <Link to={home.to} className="text-sm text-muted no-underline hover:text-forest">
+            ← {home.label}
           </Link>
           <h1 className="mt-1 font-serif text-3xl">{quiz.title}</h1>
+          {quiz.isOwner ? null : (
+            <p className="mt-1 text-sm text-muted">Shared by {quiz.authorName || "another student"}</p>
+          )}
         </div>
-        <p className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted">
-          {answeredCount} of {quiz.questions.length} answered
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <ShareButton path={`/quizzes/${quiz.id}`} />
+          <p className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted">
+            {answeredCount} of {quiz.questions.length} answered
+          </p>
+        </div>
       </div>
 
       <div>
@@ -427,14 +442,12 @@ function ResultsView({
     if (filter === "correct") return result.review.filter((item) => item.correct);
     return result.review;
   }, [filter, result.review]);
+  const home = quizHome(quiz);
 
   return (
     <div className="space-y-6">
-      <Link
-        to={quiz.documentId ? `/documents/${quiz.documentId}` : "/quizzes"}
-        className="text-sm text-muted no-underline hover:text-forest"
-      >
-        ← {quiz.documentTitle ?? "Quizzes"}
+      <Link to={home.to} className="text-sm text-muted no-underline hover:text-forest">
+        ← {home.label}
       </Link>
 
       <section className="card grid gap-5 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-[auto_1fr] sm:items-center">
@@ -447,10 +460,14 @@ function ResultsView({
           <p className="mt-1 text-muted">
             {percent}% on {quiz.title}. {missed === 0 ? "Every answer was right." : `${missed} to review.`}
           </p>
+          {quiz.isOwner ? null : (
+            <p className="mt-1 text-sm text-muted">Shared by {quiz.authorName || "another student"}</p>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className="rounded-md bg-forest px-4 py-2 font-semibold text-white" onClick={onRetake}>
               Retake quiz
             </button>
+            <ShareButton path={`/quizzes/${quiz.id}`} />
             <Link to="/" className="rounded-md border border-line px-4 py-2 font-semibold no-underline">
               Back to dashboard
             </Link>

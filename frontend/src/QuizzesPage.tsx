@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type QuizListItem } from "./api";
 import { GenerateQuizModal } from "./GenerateQuizModal";
+import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
 function whenLabel(iso: string) {
@@ -102,12 +103,11 @@ export function QuizzesPage() {
       {!loading && quizzes.length > 0 ? (
         <div className="stagger grid gap-3">
           {quizzes.map((quiz) => (
-            <Link
+            <div
               key={quiz.id}
-              to={`/quizzes/${quiz.id}`}
-              className="lift-card flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-4 no-underline"
+              className="lift-card flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-4"
             >
-              <span className="min-w-0">
+              <Link to={`/quizzes/${quiz.id}`} className="min-w-0 flex-1 no-underline">
                 <span className="block truncate font-semibold text-ink">{quiz.title}</span>
                 <span className="mt-1 block text-sm text-muted">
                   {quiz.questionCount} question{quiz.questionCount === 1 ? "" : "s"}
@@ -117,9 +117,12 @@ export function QuizzesPage() {
                   {quiz.documentTitle ? ` · ${quiz.documentTitle}` : " · Topic quiz"}
                   {quiz.createdAt ? ` · ${whenLabel(quiz.createdAt)}` : ""}
                 </span>
-              </span>
-              <span className="shrink-0 font-semibold text-forest">Open →</span>
-            </Link>
+              </Link>
+              <ShareButton path={`/quizzes/${quiz.id}`} />
+              <Link to={`/quizzes/${quiz.id}`} className="shrink-0 font-semibold text-forest no-underline">
+                Open →
+              </Link>
+            </div>
           ))}
         </div>
       ) : null}

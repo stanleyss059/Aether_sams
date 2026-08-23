@@ -26,7 +26,17 @@ import { AdminUploadsPage } from "./admin/AdminUploadsPage";
 import { AdminSpacesPage } from "./admin/AdminSpacesPage";
 import { AdminAuditLogsPage } from "./admin/AdminAuditLogsPage";
 import { AdminProfilePage } from "./admin/AdminProfilePage";
+import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
+
+function returnPathFromState(state: unknown) {
+  if (typeof state !== "object" || !state || !("from" in state)) return "/";
+  const from = (state as { from?: unknown }).from;
+  if (typeof from !== "string") return "/";
+  if (!from.startsWith("/") || from.startsWith("//")) return "/";
+  if (/^\/(login|register|forgot-password|reset-password)(\/|$|\?|#)/.test(from)) return "/";
+  return from;
+}
 
 function RecoveryRedirect() {
   const navigate = useNavigate();
@@ -46,16 +56,34 @@ function RecoveryRedirect() {
 
 function Guard() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <LoadingState className="flex min-h-screen items-center justify-center p-8" />;
   if (isPasswordRecovery()) return <Navigate to="/reset-password" replace />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    );
+  }
   return <Shell />;
 }
 
 function AdminGuard() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <LoadingState className="flex min-h-screen items-center justify-center p-8" />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    );
+  }
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
   return <Outlet />;
 }
@@ -120,7 +148,7 @@ function LoginPage() {
     setError("");
     try {
       await login(email, password);
-      navigate("/");
+      navigate(returnPathFromState(location.state));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in.");
     } finally {
@@ -151,7 +179,10 @@ function LoginPage() {
         </button>
       </form>
       <p className="mt-4 text-sm text-muted">
-        New here? <Link to="/register" className="font-semibold text-forest">Create an account</Link>
+        New here?{" "}
+        <Link to="/register" state={location.state} className="font-semibold text-forest">
+          Create an account
+        </Link>
       </p>
     </AuthCard>
   );
@@ -160,6 +191,7 @@ function LoginPage() {
 function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -178,7 +210,7 @@ function RegisterPage() {
         setInfo("Account created. Check your email to confirm, then sign in.");
         return;
       }
-      navigate("/");
+      navigate(returnPathFromState(location.state));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to register.");
     } finally {
@@ -208,7 +240,10 @@ function RegisterPage() {
         </button>
       </form>
       <p className="mt-4 text-sm text-muted">
-        Already have an account? <Link to="/login" className="font-semibold text-forest">Sign in</Link>
+        Already have an account?{" "}
+        <Link to="/login" state={location.state} className="font-semibold text-forest">
+          Sign in
+        </Link>
       </p>
     </AuthCard>
   );
@@ -355,21 +390,21 @@ function DocumentPage() {
         <h2 className="font-serif text-xl">Quizzes</h2>
         <div className="mt-3 grid gap-2">
           {doc.quizzes.map((quiz, index) => (
-            <Link
+            <div
               key={quiz.id}
-              to={`/quizzes/${quiz.id}`}
-              className="lift-card flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-4 no-underline"
+              className="lift-card flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-4"
             >
-              <span>
+              <Link to={`/quizzes/${quiz.id}`} className="min-w-0 flex-1 no-underline">
                 {quiz.title} · {quiz.questionCount} questions
                 {quiz.attemptCount > 0
                   ? ` · ${quiz.attemptCount} attempt${quiz.attemptCount === 1 ? "" : "s"}`
                   : ""}
-              </span>
-              <span className="shrink-0 font-semibold text-forest">
+              </Link>
+              <ShareButton path={`/quizzes/${quiz.id}`} />
+              <Link to={`/quizzes/${quiz.id}`} className="shrink-0 font-semibold text-forest no-underline">
                 {index === 0 ? "Attempt quiz" : "Open quiz"} →
-              </span>
-            </Link>
+              </Link>
+            </div>
           ))}
         </div>
       </section>

@@ -20,7 +20,7 @@ attemptsRouter.post(
   asyncHandler(async (req, res) => {
     const body = z.object({ answers: z.record(z.string(), z.number().int().min(0).max(3)) }).parse(req.body);
     const quiz = await prisma.quiz.findFirst({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: req.params.id },
       include: { questions: true },
     });
     if (!quiz) throw Errors.notFound("Quiz not found.");

@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { logAudit } from "../lib/audit.js";
 import { generateQuizFromTopic } from "../lib/ai.js";
-import { ownedQuiz } from "../lib/study.js";
+import { accessibleQuiz } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 const quizCountSchema = z.coerce.number().int().min(4).max(50).default(25);
@@ -84,10 +84,14 @@ quizzesRouter.post(
 quizzesRouter.get(
   "/quizzes/:id",
   asyncHandler(async (req, res) => {
-    await ownedQuiz(req.user!.id, req.params.id);
+    await accessibleQuiz(req.params.id);
     const quiz = await prisma.quiz.findUniqueOrThrow({
       where: { id: req.params.id },
-      include: { questions: { orderBy: { sortOrder: "asc" } }, document: { select: { title: true } } },
+      include: {
+        questions: { orderBy: { sortOrder: "asc" } },
+        document: { select: { title: true } },
+        user: { select: { name: true } },
+      },
     });
     res.json({
       success: true,
@@ -96,6 +100,8 @@ quizzesRouter.get(
         title: quiz.title,
         documentId: quiz.documentId,
         documentTitle: quiz.document?.title ?? null,
+        isOwner: quiz.userId === req.user!.id,
+        authorName: quiz.user.name,
         questions: quiz.questions.map((question) => ({
           id: question.id,
           prompt: question.prompt,
@@ -117,7 +123,7 @@ quizzesRouter.post(
         selectedIndex: z.number().int().min(0).max(3),
       })
       .parse(req.body);
-    await ownedQuiz(req.user!.id, req.params.id);
+    await accessibleQuiz(req.params.id);
     const question = await prisma.question.findFirst({
       where: { id: body.questionId, quizId: req.params.id },
     });

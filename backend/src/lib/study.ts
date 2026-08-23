@@ -66,6 +66,12 @@ export async function ownedQuiz(userId: string, id: string) {
   return quiz;
 }
 
+export async function accessibleQuiz(id: string) {
+  const quiz = await prisma.quiz.findFirst({ where: { id } });
+  if (!quiz) throw Errors.notFound("Quiz not found.");
+  return quiz;
+}
+
 export function serializeSpace(
   space: {
     id: string;

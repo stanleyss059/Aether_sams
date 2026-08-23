@@ -4,6 +4,7 @@ import { api, ApiError, type DocListItem } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { GenerateQuizModal } from "./GenerateQuizModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
+import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
 export function UploadsPage() {
@@ -117,12 +118,18 @@ export function UploadsPage() {
               </Link>
               <div className="flex shrink-0 flex-wrap gap-2">
                 {doc.latestQuizId ? (
-                  <Link
-                    to={`/quizzes/${doc.latestQuizId}`}
-                    className="rounded-lg bg-forest px-4 py-2 text-center text-sm font-semibold text-white no-underline"
-                  >
-                    Attempt quiz
-                  </Link>
+                  <>
+                    <Link
+                      to={`/quizzes/${doc.latestQuizId}`}
+                      className="rounded-lg bg-forest px-4 py-2 text-center text-sm font-semibold text-white no-underline"
+                    >
+                      Attempt quiz
+                    </Link>
+                    <ShareButton
+                      path={`/quizzes/${doc.latestQuizId}`}
+                      className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink"
+                    />
+                  </>
                 ) : null}
                 <button
                   type="button"
