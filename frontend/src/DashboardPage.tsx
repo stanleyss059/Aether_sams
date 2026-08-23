@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { useAuth } from "./AuthContext";
-import { api, type DocListItem, type LibraryData } from "./api";
+import { api, type DocListItem, type LibraryData, type QuizListItem } from "./api";
 import { FileBadge } from "./FileBadge";
 import { LoadingState } from "./Spinner";
 
@@ -10,14 +10,20 @@ export function DashboardPage() {
   const { user } = useAuth();
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [docs, setDocs] = useState<DocListItem[]>([]);
+  const [quizCount, setQuizCount] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([api<LibraryData>("/api/spaces"), api<DocListItem[]>("/api/documents")])
-      .then(([spaces, documents]) => {
+    Promise.all([
+      api<LibraryData>("/api/spaces"),
+      api<DocListItem[]>("/api/documents"),
+      api<QuizListItem[]>("/api/quizzes"),
+    ])
+      .then(([spaces, documents, quizzes]) => {
         setLibrary(spaces);
         setDocs(documents);
+        setQuizCount(quizzes.length);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -25,7 +31,6 @@ export function DashboardPage() {
 
   const spaceCount = library?.spaces.length ?? 0;
   const uploadCount = docs.length;
-  const quizCount = docs.reduce((sum, doc) => sum + doc.quizCount, 0);
   const firstName = user?.name.split(" ")[0] ?? "there";
 
   return (
@@ -51,7 +56,7 @@ export function DashboardPage() {
       <div className="stagger grid gap-3 sm:grid-cols-3">
         <Stat label="Spaces" value={spaceCount} to="/spaces" />
         <Stat label="Uploads" value={uploadCount} to="/uploads" />
-        <Stat label="Quizzes" value={quizCount} to="/uploads" />
+        <Stat label="Quizzes" value={quizCount} to="/quizzes" />
       </div>
 
       <section>

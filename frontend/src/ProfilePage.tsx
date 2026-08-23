@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, ApiError, type DocListItem, type LibraryData, type User } from "./api";
+import { api, ApiError, type DocListItem, type LibraryData, type QuizListItem, type User } from "./api";
 import { useAuth } from "./AuthContext";
 import { IconLock, IconMail, IconProfile, IconSignOut } from "./nav-icons";
 import { Spinner } from "./Spinner";
@@ -36,11 +36,15 @@ export function ProfilePage() {
   const [quizCount, setQuizCount] = useState<number | null>(null);
 
   useEffect(() => {
-    Promise.all([api<LibraryData>("/api/spaces"), api<DocListItem[]>("/api/documents")])
-      .then(([library, documents]) => {
+    Promise.all([
+      api<LibraryData>("/api/spaces"),
+      api<DocListItem[]>("/api/documents"),
+      api<QuizListItem[]>("/api/quizzes"),
+    ])
+      .then(([library, documents, quizzes]) => {
         setSpaceCount(library.spaces.length);
         setUploadCount(documents.length);
-        setQuizCount(documents.reduce((sum, doc) => sum + doc.quizCount, 0));
+        setQuizCount(quizzes.length);
       })
       .catch(() => {
         setSpaceCount(0);
@@ -152,7 +156,7 @@ export function ProfilePage() {
           <div className="stagger relative mt-6 grid gap-3 sm:grid-cols-3">
             <MiniStat label="Spaces" value={spaceCount} to="/spaces" />
             <MiniStat label="Uploads" value={uploadCount} to="/uploads" />
-            <MiniStat label="Quizzes" value={quizCount} to="/uploads" />
+            <MiniStat label="Quizzes" value={quizCount} to="/quizzes" />
           </div>
         </div>
       </section>

@@ -115,6 +115,39 @@ Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3
   return parsed.data satisfies Generated;
 }
 
+export async function generateQuizFromTopic(topic: string, count = 25): Promise<Generated> {
+  const parsed = generatedSchema.safeParse(
+    await chatJson([
+      {
+        role: "system",
+        content:
+          "You are a university tutor. Create accurate multiple-choice questions about the given topic using widely accepted academic knowledge. Wrong options must be plausible. Return JSON only.",
+      },
+      {
+        role: "user",
+        content: `Topic: ${topic}
+
+Return JSON with this shape:
+{
+  "summary": "one short paragraph (80-120 words) introducing the topic",
+  "questions": [
+    {
+      "question": "clear stem",
+      "options": ["A", "B", "C", "D"],
+      "correctIndex": 0,
+      "explanation": "one or two sentences that teach the idea"
+    }
+  ]
+}
+
+Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3. Stay on this topic.`,
+      },
+    ]),
+  );
+  if (!parsed.success) throw Errors.validation("The AI returned an invalid quiz. Try generating again.");
+  return parsed.data satisfies Generated;
+}
+
 export async function generateNotesFromText(title: string, text: string): Promise<string> {
   const material = text.slice(0, 24000);
   const parsed = notesSchema.safeParse(

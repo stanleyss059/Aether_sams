@@ -261,7 +261,16 @@ export type DocListItem = {
   spaceId?: string | null;
   space?: { id: string; title: string; courseCode: string } | null;
 };
-export type QuizSummary = { id: string; title: string; questionCount: number; attemptCount: number; createdAt: string };
+export type QuizSummary = {
+  id: string;
+  title: string;
+  questionCount: number;
+  attemptCount: number;
+  createdAt: string;
+  documentId?: string | null;
+  documentTitle?: string | null;
+};
+export type QuizListItem = QuizSummary;
 export type DocDetail = {
   id: string;
   title: string;

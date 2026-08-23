@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { IconAdmin, IconDashboard, IconProfile, IconSpaces, IconUploads } from "./nav-icons";
+import { IconAdmin, IconDashboard, IconProfile, IconQuiz, IconSpaces, IconUploads } from "./nav-icons";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./theme";
 
@@ -68,6 +68,7 @@ export function NavBar() {
         icon: IconUploads,
         match: (p) => p.startsWith("/uploads") || p.startsWith("/documents"),
       },
+      { to: "/quizzes", label: "Quizzes", icon: IconQuiz, end: true, match: (p) => p.startsWith("/quizzes") },
       { to: "/profile", label: "Profile", icon: IconProfile, match: (p) => p === "/profile" },
     ];
     if (user?.role === "ADMIN") {

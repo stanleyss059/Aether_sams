@@ -20,6 +20,16 @@ export function IconSpaces({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
+export function IconQuiz({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M9 9a3 3 0 1 1 4.2 2.75c-.74.37-1.2 1.03-1.2 1.75V14" />
+      <path d="M12 17h.01" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+
 export function IconUploads({ className = "h-4 w-4" }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>

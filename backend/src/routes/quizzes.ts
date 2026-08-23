@@ -2,11 +2,84 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
+import { logAudit } from "../lib/audit.js";
+import { generateQuizFromTopic } from "../lib/ai.js";
 import { ownedQuiz } from "../lib/study.js";
-import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
+import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
+
+const quizCountSchema = z.coerce.number().int().min(4).max(50).default(25);
+const topicBodySchema = z.object({
+  topic: z.string().trim().min(3).max(120),
+  count: quizCountSchema.optional(),
+});
 
 export const quizzesRouter = Router();
 quizzesRouter.use(requireAuth);
+
+quizzesRouter.get(
+  "/quizzes",
+  asyncHandler(async (req, res) => {
+    const quizzes = await prisma.quiz.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        document: { select: { id: true, title: true } },
+        _count: { select: { questions: true, attempts: true } },
+      },
+    });
+    res.json({
+      success: true,
+      data: quizzes.map((quiz) => ({
+        id: quiz.id,
+        title: quiz.title,
+        documentId: quiz.documentId,
+        documentTitle: quiz.document?.title ?? null,
+        questionCount: quiz._count.questions,
+        attemptCount: quiz._count.attempts,
+        createdAt: quiz.createdAt,
+      })),
+    });
+  }),
+);
+
+quizzesRouter.post(
+  "/quizzes/topic",
+  auditFailures("quiz.generate", "quiz", {
+    metadata: (req) => ({ topic: req.body?.topic, questionCount: req.body?.count, source: "topic" }),
+  }),
+  asyncHandler(async (req, res) => {
+    const body = topicBodySchema.parse(req.body);
+    const count = body.count ?? 25;
+    const generated = await generateQuizFromTopic(body.topic, count);
+    const quiz = await prisma.quiz.create({
+      data: {
+        userId: req.user!.id,
+        title: `Quiz · ${body.topic}`,
+        questions: {
+          create: generated.questions.map((question, index) => ({
+            prompt: question.question,
+            options: JSON.stringify(question.options),
+            correctIndex: question.correctIndex,
+            explanation: question.explanation,
+            sortOrder: index,
+          })),
+        },
+      },
+      include: { questions: true },
+    });
+    logAudit({
+      req,
+      action: "quiz.generate",
+      entityType: "quiz",
+      entityId: quiz.id,
+      metadata: { topic: body.topic, questionCount: quiz.questions.length, source: "topic" },
+    });
+    res.status(201).json({
+      success: true,
+      data: { quizId: quiz.id, questionCount: quiz.questions.length, title: quiz.title },
+    });
+  }),
+);
 
 quizzesRouter.get(
   "/quizzes/:id",
@@ -22,7 +95,7 @@ quizzesRouter.get(
         id: quiz.id,
         title: quiz.title,
         documentId: quiz.documentId,
-        documentTitle: quiz.document.title,
+        documentTitle: quiz.document?.title ?? null,
         questions: quiz.questions.map((question) => ({
           id: question.id,
           prompt: question.prompt,
@@ -38,10 +111,12 @@ quizzesRouter.get(
 quizzesRouter.post(
   "/quizzes/:id/check",
   asyncHandler(async (req, res) => {
-    const body = z.object({
-      questionId: z.string().min(1),
-      selectedIndex: z.number().int().min(0).max(3),
-    }).parse(req.body);
+    const body = z
+      .object({
+        questionId: z.string().min(1),
+        selectedIndex: z.number().int().min(0).max(3),
+      })
+      .parse(req.body);
     await ownedQuiz(req.user!.id, req.params.id);
     const question = await prisma.question.findFirst({
       where: { id: body.questionId, quizId: req.params.id },

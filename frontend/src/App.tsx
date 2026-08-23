@@ -14,6 +14,7 @@ import { OnboardingGuide } from "./OnboardingGuide";
 import { isPasswordRecovery } from "./password-recovery";
 import { ProfilePage } from "./ProfilePage";
 import { QuizPage } from "./QuizPage";
+import { QuizzesPage } from "./QuizzesPage";
 import { ResetPasswordPage } from "./ResetPasswordPage";
 import { SpacePage } from "./SpacePage";
 import { SpacesPage } from "./SpacesPage";
@@ -411,6 +412,7 @@ export default function App() {
           <Route path="/spaces" element={<SpacesPage />} />
           <Route path="/spaces/:id" element={<SpacePage />} />
           <Route path="/uploads" element={<UploadsPage />} />
+          <Route path="/quizzes" element={<QuizzesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/documents/:id" element={<DocumentPage />} />
           <Route path="/quizzes/:id" element={<QuizPage />} />

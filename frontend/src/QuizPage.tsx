@@ -67,8 +67,8 @@ function revealsFromAnswers(questions: QuizQuestion[], answers: Record<string, n
 
 type Quiz = {
   title: string;
-  documentId: string;
-  documentTitle: string;
+  documentId: string | null;
+  documentTitle: string | null;
   questions: QuizQuestion[];
 };
 
@@ -218,8 +218,11 @@ export function QuizPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link to={`/documents/${quiz.documentId}`} className="text-sm text-muted no-underline hover:text-forest">
-            ← {quiz.documentTitle}
+          <Link
+            to={quiz.documentId ? `/documents/${quiz.documentId}` : "/quizzes"}
+            className="text-sm text-muted no-underline hover:text-forest"
+          >
+            ← {quiz.documentTitle ?? "Quizzes"}
           </Link>
           <h1 className="mt-1 font-serif text-3xl">{quiz.title}</h1>
         </div>
@@ -427,8 +430,11 @@ function ResultsView({
 
   return (
     <div className="space-y-6">
-      <Link to={`/documents/${quiz.documentId}`} className="text-sm text-muted no-underline hover:text-forest">
-        ← {quiz.documentTitle}
+      <Link
+        to={quiz.documentId ? `/documents/${quiz.documentId}` : "/quizzes"}
+        className="text-sm text-muted no-underline hover:text-forest"
+      >
+        ← {quiz.documentTitle ?? "Quizzes"}
       </Link>
 
       <section className="card grid gap-5 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-[auto_1fr] sm:items-center">

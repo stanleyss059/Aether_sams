@@ -13,6 +13,7 @@ export const QUIZ_SIZE_OPTIONS = [
 type GenerateQuizModalProps = {
   open: boolean;
   title?: string;
+  fromTopic?: boolean;
   busy?: boolean;
   onCancel: () => void;
   onGenerate: (count: number) => void;
@@ -21,6 +22,7 @@ type GenerateQuizModalProps = {
 export function GenerateQuizModal({
   open,
   title,
+  fromTopic = false,
   busy = false,
   onCancel,
   onGenerate,
@@ -50,8 +52,11 @@ export function GenerateQuizModal({
         <p id="generate-quiz-desc" className="mt-1.5 text-sm leading-relaxed text-muted">
           {title ? (
             <>
-              Pick a range for <span className="font-semibold text-ink">“{title}”</span>. Questions stay on this file only.
+              Pick a range for <span className="font-semibold text-ink">“{title}”</span>.{" "}
+              {fromTopic ? "Questions will cover this topic." : "Questions stay on this file only."}
             </>
+          ) : fromTopic ? (
+            "Pick a range. Aether will write questions about your topic."
           ) : (
             "Pick a range. Aether will write questions from this file only."
           )}

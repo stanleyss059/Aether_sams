@@ -83,12 +83,12 @@ model Document {
 
 model Quiz {
   id         String   @id @default(uuid())
-  documentId String
+  documentId String?
   userId     String
   title      String
   createdAt  DateTime @default(now())
 
-  document  Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document  Document?  @relation(fields: [documentId], references: [id], onDelete: Cascade)
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions Question[]
   attempts  Attempt[]
