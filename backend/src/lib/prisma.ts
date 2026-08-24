@@ -19,18 +19,14 @@ function databaseUrl() {
   return `${base}?${params.toString()}`;
 }
 
-// Instantiated on first query so a missing query engine surfaces as an API
-// error instead of killing the serverless function during module load.
-function client(): PrismaClient {
-  if (!globalForPrisma.prisma) {
-    const url = databaseUrl();
-    globalForPrisma.prisma = new PrismaClient(url ? { datasources: { db: { url } } } : undefined);
-  }
-  return globalForPrisma.prisma;
+function createClient() {
+  const url = databaseUrl();
+  return new PrismaClient(url ? { datasources: { db: { url } } } : undefined);
 }
 
-export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, property, receiver) {
-    return Reflect.get(client(), property, receiver);
-  },
-});
+// Singleton keeps full generated PrismaClient typings (liveSession, livePlayer, …).
+export const prisma: PrismaClient = globalForPrisma.prisma ?? createClient();
+
+if (!globalForPrisma.prisma) {
+  globalForPrisma.prisma = prisma;
+}

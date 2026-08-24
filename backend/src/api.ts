@@ -48,6 +48,10 @@ export async function createApiRouter(): Promise<Router> {
     const { spacesRouter } = await import("./routes/spaces.js");
     const { quizzesRouter } = await import("./routes/quizzes.js");
     const { attemptsRouter } = await import("./routes/attempts.js");
+    const { liveRouter } = await import("./routes/live.js");
+    // Live join links are public. Mount before routers that call requireAuth on
+    // every request, or guests hit 401 before /live/:id is reached.
+    useRouter(api, liveRouter, "live");
     useRouter(api, documentsRouter, "documents");
     useRouter(api, spacesRouter, "spaces");
     useRouter(api, quizzesRouter, "quizzes");

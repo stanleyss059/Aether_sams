@@ -605,6 +605,115 @@ html.theme-switching::view-transition-new(root) {
   mix-blend-mode: normal;
 }
 
+@keyframes live-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes live-bar-urgent {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes live-lock-pop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes live-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes live-podium-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.live-enter {
+  animation: live-enter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.live-option {
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.live-option:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.live-option:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+.live-option-picked {
+  animation: live-lock-pop 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.live-timer-urgent {
+  animation: live-pulse 0.7s ease-in-out infinite;
+  color: var(--danger) !important;
+}
+
+.live-bar-urgent {
+  animation: live-bar-urgent 0.7s ease-in-out infinite;
+  background: var(--danger) !important;
+}
+
+.live-score-row {
+  animation: live-stagger-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.live-podium {
+  animation: live-podium-rise 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter,
   .reveal,
@@ -615,7 +724,13 @@ html.theme-switching::view-transition-new(root) {
   .upload-progress,
   .upload-progress-label,
   .upload-progress-fill,
-  .theme-glyph-icon {
+  .theme-glyph-icon,
+  .live-enter,
+  .live-option-picked,
+  .live-timer-urgent,
+  .live-bar-urgent,
+  .live-score-row,
+  .live-podium {
     animation: none !important;
     transition: none !important;
     filter: none !important;

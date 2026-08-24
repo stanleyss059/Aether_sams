@@ -23,12 +23,14 @@ model User {
   suspendedAt  DateTime?
   createdAt    DateTime  @default(now())
 
-  spaces    Space[]
-  documents Document[]
-  quizzes   Quiz[]
-  attempts  Attempt[]
-  sessions  Session[]
-  auditLogs AuditLog[]
+  spaces              Space[]
+  documents           Document[]
+  quizzes             Quiz[]
+  attempts            Attempt[]
+  sessions            Session[]
+  auditLogs           AuditLog[]
+  hostedLiveSessions  LiveSession[] @relation("LiveHost")
+  livePlayers         LivePlayer[]
 }
 
 model Session {
@@ -88,10 +90,11 @@ model Quiz {
   title      String
   createdAt  DateTime @default(now())
 
-  document  Document?  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questions Question[]
-  attempts  Attempt[]
+  document     Document?     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions    Question[]
+  attempts     Attempt[]
+  liveSessions LiveSession[]
 
   @@index([userId])
   @@index([documentId])
@@ -146,4 +149,65 @@ model AuditLog {
   @@index([actorUserId])
   @@index([action])
   @@index([entityType])
+}
+
+enum LiveStatus {
+  LOBBY
+  QUESTION
+  REVEAL
+  FINISHED
+}
+
+model LiveSession {
+  id                String     @id @default(uuid())
+  quizId            String
+  hostUserId        String
+  status            LiveStatus @default(LOBBY)
+  questionIndex     Int        @default(0)
+  questionStartedAt DateTime?
+  createdAt         DateTime   @default(now())
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  host    User         @relation("LiveHost", fields: [hostUserId], references: [id], onDelete: Cascade)
+  players LivePlayer[]
+  answers LiveAnswer[]
+
+  @@index([quizId])
+  @@index([hostUserId])
+}
+
+model LivePlayer {
+  id          String   @id @default(uuid())
+  sessionId   String
+  userId      String?
+  displayName String
+  token       String   @unique
+  isHost      Boolean  @default(false)
+  score       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  session LiveSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  answers LiveAnswer[]
+
+  @@index([sessionId])
+}
+
+model LiveAnswer {
+  id            String   @id @default(uuid())
+  sessionId     String
+  playerId      String
+  questionId    String
+  selectedIndex Int
+  correct       Boolean
+  points        Int
+  elapsedMs     Int
+  createdAt     DateTime @default(now())
+
+  session LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player  LivePlayer  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, questionId])
+  @@index([sessionId])
+  @@index([questionId])
 }

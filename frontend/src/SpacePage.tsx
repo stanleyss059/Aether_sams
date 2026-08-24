@@ -6,6 +6,7 @@ import { uploadDocument } from "./documents";
 import { ConfirmModal } from "./ConfirmModal";
 import { GenerateQuizModal } from "./GenerateQuizModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
+import { openGeneratedQuiz } from "./live";
 import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 import { UploadProgressBar, type UploadProgress } from "./UploadProgressBar";
@@ -185,7 +186,7 @@ export function SpacePage() {
     }
   }
 
-  async function generateQuiz(count: number) {
+  async function generateQuiz(count: number, live = false) {
     if (!quizTarget) return;
     const docId = quizTarget.id;
     setGeneratingId(docId);
@@ -196,7 +197,7 @@ export function SpacePage() {
         body: JSON.stringify({ count }),
       });
       setQuizTarget(null);
-      navigate(`/quizzes/${data.quizId}`);
+      await openGeneratedQuiz(navigate, data.quizId, live);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate a quiz from that upload.");
       setGeneratingId(null);

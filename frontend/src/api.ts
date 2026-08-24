@@ -46,14 +46,21 @@ export async function accessAuthHeaders() {
   return headers;
 }
 
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
-  if (!isForm && options.body) headers.set("Content-Type", "application/json");
+type ApiOptions = RequestInit & {
+  skipAuthLogout?: boolean;
+  liveToken?: string | null;
+};
+
+export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const { skipAuthLogout = false, liveToken, ...init } = options;
+  const headers = new Headers(init.headers);
+  const isForm = typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (!isForm && init.body) headers.set("Content-Type", "application/json");
   withAuthHeaders(headers, await bearerToken());
+  if (liveToken) headers.set("X-Live-Player-Token", liveToken);
   let res: Response;
   try {
-    res = await fetch(path, { ...options, credentials: "include", headers, cache: "no-store" });
+    res = await fetch(path, { ...init, credentials: "include", headers, cache: "no-store" });
   } catch {
     throw new ApiError(
       "Could not reach the server. Check your connection and try again.",
@@ -78,11 +85,11 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     );
   }
   if (isFail(json)) {
-    if (json.error.code === "UNAUTHORIZED" && res.status === 401) {
+    if (json.error.code === "UNAUTHORIZED" && res.status === 401 && !skipAuthLogout) {
       await supabase.auth.signOut();
     }
     const message =
-      json.error.code === "UNAUTHORIZED"
+      json.error.code === "UNAUTHORIZED" && !skipAuthLogout
         ? "Your session expired. Please sign in again."
         : json.error.message;
     throw new ApiError(message, json.error.code, res.status);

@@ -6,6 +6,9 @@
   "main": "src/app.cjs",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "predev": "prisma generate",
+    "prebuild": "prisma generate",
+    "postinstall": "prisma generate",
     "build": "tsc -p tsconfig.json",
     "build:vercel": "node scripts/build-vercel.mjs",
     "prisma:generate": "prisma generate",

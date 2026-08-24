@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "./api";
+import { createLiveSession } from "./live";
 import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
@@ -103,6 +104,7 @@ type Filter = "all" | "missed" | "correct";
 
 export function QuizPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [index, setIndex] = useState(0);
@@ -177,6 +179,20 @@ export function QuizPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [quiz, result, question, chooseAnswer]);
 
+  async function hostLive() {
+    if (!quiz?.isOwner) return;
+    setBusy(true);
+    setError("");
+    try {
+      const sessionId = await createLiveSession(quiz.id);
+      navigate(`/live/${sessionId}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not start a live quiz.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit() {
     if (!quiz) return;
     if (remaining > 0 && !confirmSubmit) {
@@ -240,6 +256,16 @@ export function QuizPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ShareButton path={`/quizzes/${quiz.id}`} />
+          {quiz.isOwner ? (
+            <button
+              type="button"
+              className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-60"
+              disabled={busy}
+              onClick={() => void hostLive()}
+            >
+              Host live
+            </button>
+          ) : null}
           <p className="rounded-full border border-line bg-surface px-3 py-1 text-sm text-muted">
             {answeredCount} of {quiz.questions.length} answered
           </p>

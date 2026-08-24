@@ -6,6 +6,8 @@ import { api, ApiError, type DocDetail } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { GenerateQuizModal } from "./GenerateQuizModal";
 import { SaveDocumentButton } from "./FileBadge";
+import { openGeneratedQuiz } from "./live";
+import { LiveQuizPage } from "./LiveQuizPage";
 import { StudyNotes } from "./StudyNotes";
 import { DashboardPage } from "./DashboardPage";
 import { ForgotPasswordPage } from "./ForgotPasswordPage";
@@ -303,7 +305,7 @@ function DocumentPage() {
     };
   }, [id, doc]);
 
-  async function generate(count: number) {
+  async function generate(count: number, live = false) {
     setBusy(true);
     setError("");
     try {
@@ -313,7 +315,7 @@ function DocumentPage() {
       });
       setQuizModalOpen(false);
       await load();
-      navigate(`/quizzes/${data.quizId}`);
+      await openGeneratedQuiz(navigate, data.quizId, live);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate a quiz.");
     } finally {
@@ -442,6 +444,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/live/:id" element={<LiveQuizPage />} />
         <Route element={<Guard />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/spaces" element={<SpacesPage />} />

@@ -6,7 +6,14 @@ import { logAudit } from "../lib/audit.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
 export const attemptsRouter = Router();
-attemptsRouter.use(requireAuth);
+attemptsRouter.use((req, res, next) => {
+  const path = `${req.originalUrl ?? ""} ${req.url ?? ""} ${req.path ?? ""}`.toLowerCase();
+  if (!path.includes("/quizzes/") && !path.includes("/attempt")) {
+    next();
+    return;
+  }
+  requireAuth(req, res, next);
+});
 
 attemptsRouter.post(
   "/quizzes/:id/attempt",

@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type QuizListItem } from "./api";
 import { GenerateQuizModal } from "./GenerateQuizModal";
+import { openGeneratedQuiz } from "./live";
 import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
@@ -38,7 +39,7 @@ export function QuizzesPage() {
     setPickerOpen(true);
   }
 
-  async function generate(count: number) {
+  async function generate(count: number, live = false) {
     const next = topic.trim();
     if (next.length < 3) return;
     setBusy(true);
@@ -49,7 +50,7 @@ export function QuizzesPage() {
         body: JSON.stringify({ topic: next, count }),
       });
       setPickerOpen(false);
-      navigate(`/quizzes/${data.quizId}`);
+      await openGeneratedQuiz(navigate, data.quizId, live);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate that quiz.");
     } finally {

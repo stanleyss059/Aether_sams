@@ -21,7 +21,10 @@ const notesSchema = z.object({
   notes: z.string().trim().min(80).max(20_000),
 });
 
-async function chatJson(messages: { role: "system" | "user"; content: string }[]): Promise<unknown> {
+async function chatJson(
+  messages: { role: "system" | "user"; content: string }[],
+  maxTokens: number,
+): Promise<unknown> {
   if (!config?.openaiKey) {
     throw Errors.validation(
       "Add OPENAI_API_KEY in your environment (Vercel → Settings → Environment Variables, or backend/.env locally), then redeploy or restart.",
@@ -42,6 +45,7 @@ async function chatJson(messages: { role: "system" | "user"; content: string }[]
       body: JSON.stringify({
         model: config.openaiModel,
         temperature: 0.3,
+        max_tokens: maxTokens,
         response_format: { type: "json_object" },
         messages,
       }),
@@ -58,6 +62,12 @@ async function chatJson(messages: { role: "system" | "user"; content: string }[]
     console.error(`AI provider error ${response.status}: ${detail.slice(0, 500)}`);
     if (response.status === 401 || response.status === 403) {
       throw Errors.serviceUnavailable("The AI provider credentials are invalid.", "AI_AUTH");
+    }
+    if (response.status === 402) {
+      throw Errors.serviceUnavailable(
+        "AI credits are low. Add credits at openrouter.ai/settings/credits, or try fewer questions.",
+        "AI_CREDITS",
+      );
     }
     if (response.status === 429) {
       throw Errors.serviceUnavailable("The AI provider is rate limited. Try again shortly.", "AI_RATE_LIMIT");
@@ -78,18 +88,24 @@ async function chatJson(messages: { role: "system" | "user"; content: string }[]
   }
 }
 
+/** Keep completion budget tight so low OpenRouter balances still succeed. */
+function quizMaxTokens(count: number) {
+  return Math.min(8_000, Math.max(1_200, count * 220 + 400));
+}
+
 export async function generateQuizFromText(title: string, text: string, count = 50): Promise<Generated> {
   const material = text.slice(0, 14000);
   const parsed = generatedSchema.safeParse(
-    await chatJson([
-      {
-        role: "system",
-        content:
-          "You are a university tutor. Create multiple-choice questions using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
-      },
-      {
-        role: "user",
-        content: `Document title: ${title}
+    await chatJson(
+      [
+        {
+          role: "system",
+          content:
+            "You are a university tutor. Create multiple-choice questions using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
+        },
+        {
+          role: "user",
+          content: `Document title: ${title}
 
 Material:
 ${material}
@@ -108,8 +124,10 @@ Return JSON with this shape:
 }
 
 Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3.`,
-      },
-    ]),
+        },
+      ],
+      quizMaxTokens(count),
+    ),
   );
   if (!parsed.success) throw Errors.validation("The AI returned an invalid quiz. Try generating again.");
   return parsed.data satisfies Generated;
@@ -117,15 +135,16 @@ Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3
 
 export async function generateQuizFromTopic(topic: string, count = 25): Promise<Generated> {
   const parsed = generatedSchema.safeParse(
-    await chatJson([
-      {
-        role: "system",
-        content:
-          "You are a university tutor. Create accurate multiple-choice questions about the given topic using widely accepted academic knowledge. Wrong options must be plausible. Return JSON only.",
-      },
-      {
-        role: "user",
-        content: `Topic: ${topic}
+    await chatJson(
+      [
+        {
+          role: "system",
+          content:
+            "You are a university tutor. Create accurate multiple-choice questions about the given topic using widely accepted academic knowledge. Wrong options must be plausible. Return JSON only.",
+        },
+        {
+          role: "user",
+          content: `Topic: ${topic}
 
 Return JSON with this shape:
 {
@@ -141,8 +160,10 @@ Return JSON with this shape:
 }
 
 Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3. Stay on this topic.`,
-      },
-    ]),
+        },
+      ],
+      quizMaxTokens(count),
+    ),
   );
   if (!parsed.success) throw Errors.validation("The AI returned an invalid quiz. Try generating again.");
   return parsed.data satisfies Generated;
@@ -151,15 +172,16 @@ Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3
 export async function generateNotesFromText(title: string, text: string): Promise<string> {
   const material = text.slice(0, 24000);
   const parsed = notesSchema.safeParse(
-    await chatJson([
-      {
-        role: "system",
-        content:
-          "You are a university tutor. Write detailed study notes using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
-      },
-      {
-        role: "user",
-        content: `Document title: ${title}
+    await chatJson(
+      [
+        {
+          role: "system",
+          content:
+            "You are a university tutor. Write detailed study notes using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
+        },
+        {
+          role: "user",
+          content: `Document title: ${title}
 
 Material:
 ${material}
@@ -179,8 +201,10 @@ Use this structure with blank lines between sections:
 5. Exam takeaways
 
 Use short headings in Title Case, then bullet points or short paragraphs. Do not use markdown symbols like # or *.`,
-      },
-    ]),
+        },
+      ],
+      6_000,
+    ),
   );
   if (!parsed.success) throw Errors.validation("The AI returned invalid notes. Try generating again.");
   return parsed.data.notes;

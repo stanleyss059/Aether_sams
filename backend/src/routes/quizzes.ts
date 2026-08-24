@@ -14,7 +14,14 @@ const topicBodySchema = z.object({
 });
 
 export const quizzesRouter = Router();
-quizzesRouter.use(requireAuth);
+quizzesRouter.use((req, res, next) => {
+  const path = `${req.originalUrl ?? ""} ${req.url ?? ""} ${req.path ?? ""}`.toLowerCase();
+  if (!path.includes("/quizzes")) {
+    next();
+    return;
+  }
+  requireAuth(req, res, next);
+});
 
 quizzesRouter.get(
   "/quizzes",
