@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import multer from "multer";
 import { writeAudit } from "../lib/audit.js";
+import { cachedUser, rememberUser } from "../lib/auth-cache.js";
 import { readAccessToken } from "../lib/auth-token.js";
 import { AppError, Errors } from "../lib/errors.js";
 import { ensureLocalUser, type AppUser, supabaseAuth } from "../lib/supabase.js";
@@ -40,6 +41,13 @@ export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {
     return;
   }
 
+  const cached = cachedUser(token);
+  if (cached) {
+    req.user = cached;
+    next();
+    return;
+  }
+
   const { data, error } = await supabaseAuth.auth.getUser(token);
   if (error || !data.user) {
     console.error("Supabase token rejected:", error?.message ?? "unknown error");
@@ -49,6 +57,7 @@ export const attachSupabaseUser = asyncHandler(async (req, _res, next) => {
 
   try {
     req.user = await ensureLocalUser(data.user);
+    rememberUser(token, req.user);
   } catch (syncError) {
     console.error("Failed to sync Supabase user to database:", syncError);
     next(Errors.serviceUnavailable("Could not load your account. Try again in a moment.", "DATABASE"));

@@ -3,16 +3,14 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { Errors } from "../lib/errors.js";
 import { logAudit } from "../lib/audit.js";
-import { ownedQuiz } from "../lib/study.js";
 import {
   advanceLiveSession,
   assertLiveHost,
+  gradeLiveAnswer,
   liveViewer,
   loadLiveSession,
   newPlayerToken,
-  QUESTION_MS,
   serializeLive,
-  speedPoints,
   syncLiveStatus,
 } from "../lib/live.js";
 import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
@@ -20,6 +18,7 @@ import { asyncHandler, requireAuth } from "../middleware/errorHandler.js";
 const nameSchema = z.string().trim().min(1).max(24);
 const answerSchema = z.object({
   selectedIndex: z.number().int().min(0).max(3),
+  questionId: z.string().min(1).optional(),
 });
 
 export const liveRouter = Router();
@@ -29,9 +28,16 @@ liveRouter.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     const body = z.object({ quizId: z.string().min(1) }).parse(req.body);
-    const quiz = await ownedQuiz(req.user!.id, body.quizId);
-    const count = await prisma.question.count({ where: { quizId: quiz.id } });
-    if (count < 1) throw Errors.validation("This quiz has no questions yet.");
+    const quiz = await prisma.quiz.findFirst({
+      where: { id: body.quizId, userId: req.user!.id },
+      select: {
+        id: true,
+        title: true,
+        questions: { orderBy: { sortOrder: "asc" } },
+      },
+    });
+    if (!quiz) throw Errors.notFound("Quiz not found.");
+    if (quiz.questions.length < 1) throw Errors.validation("This quiz has no questions yet.");
 
     const session = await prisma.liveSession.create({
       data: {
@@ -56,9 +62,23 @@ liveRouter.post(
       entityId: session.id,
       metadata: { quizId: quiz.id },
     });
+    const snapshot = serializeLive(
+      {
+        id: session.id,
+        hostUserId: req.user!.id,
+        status: "LOBBY",
+        questionIndex: 0,
+        questionStartedAt: null,
+        quiz: { id: quiz.id, title: quiz.title, questions: quiz.questions },
+        players: session.players,
+        answers: [],
+      },
+      host,
+      { includeDeck: true },
+    );
     res.status(201).json({
       success: true,
-      data: { id: session.id, playerToken: host.token, playerId: host.id },
+      data: { id: session.id, playerToken: host.token, playerId: host.id, snapshot },
     });
   }),
 );
@@ -69,7 +89,8 @@ liveRouter.get(
   asyncHandler(async (req, res) => {
     const session = await syncLiveStatus(req.params.id);
     const viewer = await liveViewer(req, session.id);
-    res.json({ success: true, data: serializeLive(session, viewer) });
+    const includeDeck = req.query.light !== "1";
+    res.json({ success: true, data: serializeLive(session, viewer, { includeDeck }) });
   }),
 );
 
@@ -84,7 +105,12 @@ liveRouter.post(
     if (existing) {
       res.json({
         success: true,
-        data: { playerId: existing.id, playerToken: existing.token, name: existing.displayName },
+        data: {
+          playerId: existing.id,
+          playerToken: existing.token,
+          name: existing.displayName,
+          snapshot: serializeLive(session, existing, { includeDeck: true }),
+        },
       });
       return;
     }
@@ -99,9 +125,15 @@ liveRouter.post(
         token: newPlayerToken(),
       },
     });
+    const joined = { ...session, players: [...session.players, player] };
     res.status(201).json({
       success: true,
-      data: { playerId: player.id, playerToken: player.token, name: player.displayName },
+      data: {
+        playerId: player.id,
+        playerToken: player.token,
+        name: player.displayName,
+        snapshot: serializeLive(joined, player, { includeDeck: true }),
+      },
     });
   }),
 );
@@ -114,9 +146,10 @@ liveRouter.post(
     assertLiveHost(session, viewer, req);
     if (session.status !== "LOBBY") throw Errors.validation("This live quiz has already started.");
 
+    const questionStartedAt = new Date();
     await prisma.liveSession.update({
       where: { id: session.id },
-      data: { status: "QUESTION", questionIndex: 0, questionStartedAt: new Date() },
+      data: { status: "QUESTION", questionIndex: 0, questionStartedAt },
     });
     logAudit({
       req,
@@ -124,8 +157,13 @@ liveRouter.post(
       entityType: "live_session",
       entityId: session.id,
     });
-    const fresh = await loadLiveSession(session.id);
-    res.json({ success: true, data: serializeLive(fresh, viewer) });
+    res.json({
+      success: true,
+      data: serializeLive(
+        { ...session, status: "QUESTION", questionIndex: 0, questionStartedAt },
+        viewer,
+      ),
+    });
   }),
 );
 
@@ -133,67 +171,18 @@ liveRouter.post(
   "/live/:id/answer",
   asyncHandler(async (req, res) => {
     const body = answerSchema.parse(req.body);
-    const session = await syncLiveStatus(req.params.id);
-    const viewer = await liveViewer(req, session.id);
-    if (!viewer) throw Errors.forbidden("Join this live quiz first.");
-    if (session.status !== "QUESTION" || !session.questionStartedAt) {
-      throw Errors.validation("Wait for the host to open the next question.");
-    }
-
-    const elapsedMs = Date.now() - session.questionStartedAt.getTime();
-    if (elapsedMs > QUESTION_MS) throw Errors.validation("Time is up.");
-
-    const question = session.quiz.questions[session.questionIndex];
-    if (!question) throw Errors.notFound("Question not found.");
-
-    const already = session.answers.find(
-      (answer) => answer.playerId === viewer.id && answer.questionId === question.id,
-    );
-    if (already) throw Errors.conflict("You already answered this question.");
-
-    const correct = body.selectedIndex === question.correctIndex;
-    const points = speedPoints(correct, elapsedMs);
-    const answer = await prisma.$transaction(async (tx) => {
-      const created = await tx.liveAnswer.create({
-        data: {
-          sessionId: session.id,
-          playerId: viewer.id,
-          questionId: question.id,
-          selectedIndex: body.selectedIndex,
-          correct,
-          points,
-          elapsedMs,
-        },
-      });
-      if (points > 0) {
-        await tx.livePlayer.update({
-          where: { id: viewer.id },
-          data: { score: { increment: points } },
-        });
-      }
-      return created;
-    });
-
-    const fresh = await syncLiveStatus(session.id);
-    const you = await liveViewer(req, session.id);
-    res.status(201).json({
-      success: true,
-      data: {
-        selectedIndex: answer.selectedIndex,
-        snapshot: serializeLive(fresh, you),
-      },
-    });
+    const grade = await gradeLiveAnswer(req, req.params.id, body.selectedIndex, body.questionId);
+    res.status(201).json({ success: true, data: { selectedIndex: grade.selectedIndex, grade } });
   }),
 );
 
-/** Host can skip the reveal wait and go to the next question immediately. */
 liveRouter.post(
   "/live/:id/next",
   asyncHandler(async (req, res) => {
-    const session = await syncLiveStatus(req.params.id);
-    const viewer = await liveViewer(req, session.id);
+    const viewer = await liveViewer(req, req.params.id);
+    const session = await loadLiveSession(req.params.id);
     assertLiveHost(session, viewer, req);
     const fresh = await advanceLiveSession(session.id);
-    res.json({ success: true, data: serializeLive(fresh, viewer) });
+    res.json({ success: true, data: serializeLive(fresh, viewer, { includeDeck: false }) });
   }),
 );

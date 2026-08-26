@@ -7,7 +7,7 @@ import { generateQuizFromTopic } from "../lib/ai.js";
 import { accessibleQuiz } from "../lib/study.js";
 import { asyncHandler, auditFailures, requireAuth } from "../middleware/errorHandler.js";
 
-const quizCountSchema = z.coerce.number().int().min(4).max(50).default(25);
+const quizCountSchema = z.coerce.number().int().min(4).max(50).default(12);
 const topicBodySchema = z.object({
   topic: z.string().trim().min(3).max(120),
   count: quizCountSchema.optional(),
@@ -56,7 +56,7 @@ quizzesRouter.post(
   }),
   asyncHandler(async (req, res) => {
     const body = topicBodySchema.parse(req.body);
-    const count = body.count ?? 25;
+    const count = body.count ?? 12;
     const generated = await generateQuizFromTopic(body.topic, count);
     const quiz = await prisma.quiz.create({
       data: {
@@ -72,18 +72,17 @@ quizzesRouter.post(
           })),
         },
       },
-      include: { questions: true },
     });
     logAudit({
       req,
       action: "quiz.generate",
       entityType: "quiz",
       entityId: quiz.id,
-      metadata: { topic: body.topic, questionCount: quiz.questions.length, source: "topic" },
+      metadata: { topic: body.topic, questionCount: generated.questions.length, source: "topic" },
     });
     res.status(201).json({
       success: true,
-      data: { quizId: quiz.id, questionCount: quiz.questions.length, title: quiz.title },
+      data: { quizId: quiz.id, questionCount: generated.questions.length, title: quiz.title },
     });
   }),
 );
@@ -91,8 +90,7 @@ quizzesRouter.post(
 quizzesRouter.get(
   "/quizzes/:id",
   asyncHandler(async (req, res) => {
-    await accessibleQuiz(req.params.id);
-    const quiz = await prisma.quiz.findUniqueOrThrow({
+    const quiz = await prisma.quiz.findUnique({
       where: { id: req.params.id },
       include: {
         questions: { orderBy: { sortOrder: "asc" } },
@@ -100,6 +98,7 @@ quizzesRouter.get(
         user: { select: { name: true } },
       },
     });
+    if (!quiz) throw Errors.notFound("Quiz not found.");
     res.json({
       success: true,
       data: {

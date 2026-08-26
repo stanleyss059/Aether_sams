@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError, type User } from "./api";
+import { clearPageCache } from "./page-cache";
 import { clearPasswordRecovery, detectRecoveryLink, isPasswordRecovery, markPasswordRecovery } from "./password-recovery";
 import { supabase } from "./supabase";
 
@@ -16,7 +17,7 @@ type Auth = {
 };
 
 const Ctx = createContext<Auth | null>(null);
-const IDLE_MS = 5 * 60 * 1000;
+const IDLE_MS = 24 * 60 * 60 * 1000;
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "touchstart", "click", "wheel"] as const;
 
 async function fetchLocalUser(): Promise<User | null> {
@@ -182,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await supabase.auth.signOut();
           throw new ApiError("Your account has been suspended.", "SUSPENDED", 403);
         }
+        clearPageCache();
         setUser(user);
         await recordAuthEvent("login");
       },
@@ -200,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.session?.user) {
           const user = await fetchLocalUserWithRetry();
           if (user) {
+            clearPageCache();
             setUser(user);
             await recordAuthEvent("login");
           }
@@ -213,6 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (signedIn.data.session?.user) {
           const user = await fetchLocalUserWithRetry();
           if (user) {
+            clearPageCache();
             setUser(user);
             await recordAuthEvent("login");
           }
@@ -232,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user) await recordAuthEvent("logout");
         const { error } = await supabase.auth.signOut();
         if (error) throw new Error(error.message);
+        clearPageCache();
         setUser(null);
       },
       applyUser: (next) => setUser(next),

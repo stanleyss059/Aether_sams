@@ -1,13 +1,15 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { api, ApiError, type Accent, type LibraryData, type SpaceSummary } from "./api";
+import { bumpLibrary, useCachedGet } from "./page-cache";
 import { LoadingState, Spinner } from "./Spinner";
 
 export function SpacesPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<LibraryData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const query = useCachedGet<LibraryData>("/api/spaces");
+  const data = query.data ?? null;
+  const loading = query.loading;
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -15,13 +17,6 @@ export function SpacesPage() {
   const [courseCode, setCourseCode] = useState("");
   const [description, setDescription] = useState("");
   const [accent, setAccent] = useState<Accent>("forest");
-
-  useEffect(() => {
-    api<LibraryData>("/api/spaces")
-      .then(setData)
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -32,6 +27,7 @@ export function SpacesPage() {
         method: "POST",
         body: JSON.stringify({ title, courseCode, description, accent }),
       });
+      bumpLibrary();
       navigate(`/spaces/${space.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not create that space.");
@@ -111,6 +107,8 @@ export function SpacesPage() {
             {busy ? <Spinner size="sm" /> : "Create space"}
           </button>
         </form>
+      ) : query.error ? (
+        <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{query.error}</p>
       ) : error ? (
         <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
       ) : null}

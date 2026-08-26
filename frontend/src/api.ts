@@ -17,7 +17,13 @@ function isFail<T>(result: Ok<T> | Fail): result is Fail {
   return !result.success;
 }
 
+let cachedAccess: { token: string; until: number } | null = null;
+
 async function bearerToken() {
+  if (cachedAccess && cachedAccess.until > Date.now() + 15_000) {
+    return cachedAccess.token;
+  }
+
   let { data } = await supabase.auth.getSession();
   let session = data.session;
 
@@ -27,7 +33,13 @@ async function bearerToken() {
     session = refreshed.data.session ?? null;
   }
 
-  return session?.access_token ?? null;
+  const token = session?.access_token ?? null;
+  if (token && session?.expires_at) {
+    cachedAccess = { token, until: session.expires_at * 1000 };
+  } else {
+    cachedAccess = null;
+  }
+  return token;
 }
 
 function withAuthHeaders(headers: Headers, token: string | null) {
@@ -86,6 +98,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
   if (isFail(json)) {
     if (json.error.code === "UNAUTHORIZED" && res.status === 401 && !skipAuthLogout) {
+      cachedAccess = null;
       await supabase.auth.signOut();
     }
     const message =

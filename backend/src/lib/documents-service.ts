@@ -31,7 +31,7 @@ const moveSchema = z.object({
   spaceId: z.string().min(1).nullable(),
 });
 
-const quizCountSchema = z.coerce.number().int().min(4).max(50).default(50);
+const quizCountSchema = z.coerce.number().int().min(4).max(50).default(12);
 
 function serializeListItem(document: {
   id: string;
@@ -49,7 +49,7 @@ function serializeListItem(document: {
     id: document.id,
     title: document.title,
     filename: document.filename,
-    summary: document.summary,
+    summary: document.summary.slice(0, 160),
     fileUrl: document.fileUrl || null,
     createdAt: document.createdAt,
     quizCount: document._count.quizzes,
@@ -78,7 +78,6 @@ export async function getUserDocument(userId: string, id: string) {
     where: { id, userId },
     select: {
       ...documentSummarySelect,
-      extractedText: true,
       space: { select: { id: true, title: true, courseCode: true } },
       quizzes: {
         orderBy: { createdAt: "desc" },
@@ -98,7 +97,7 @@ export async function getUserDocument(userId: string, id: string) {
     title: document.title,
     filename: document.filename,
     summary: document.summary,
-    excerpt: document.extractedText.slice(0, 1200),
+    excerpt: document.summary.slice(0, 1200),
     fileUrl: document.fileUrl || null,
     createdAt: document.createdAt,
     space: document.space,
@@ -254,8 +253,8 @@ export async function generateUserDocumentNotes(userId: string, id: string) {
 export async function generateUserDocumentQuiz(userId: string, id: string, rawBody: unknown) {
   const count = quizCountSchema.parse(
     typeof rawBody === "object" && rawBody && "count" in rawBody
-      ? (rawBody as { count?: unknown }).count ?? 50
-      : 50,
+      ? (rawBody as { count?: unknown }).count ?? 12
+      : 12,
   );
   const document = await ownedDocument(userId, id);
   const generated = await generateQuizFromText(document.title, document.extractedText, count);
@@ -279,14 +278,13 @@ export async function generateUserDocumentQuiz(userId: string, id: string, rawBo
           })),
         },
       },
-      include: { questions: true },
     });
   });
 
   return {
     quizId: quiz.id,
     summary: generated.summary,
-    questionCount: quiz.questions.length,
+    questionCount: generated.questions.length,
     documentId: document.id,
   };
 }

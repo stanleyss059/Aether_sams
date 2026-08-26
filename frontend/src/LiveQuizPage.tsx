@@ -185,7 +185,7 @@ function YourHud({ snapshot }: { snapshot: LiveSnapshot }) {
   const you = snapshot.you;
   if (!you) return null;
   const rank = snapshot.ranking.find((row) => row.id === you.id)?.rank;
-  const roundPoints = snapshot.status === "REVEAL" ? you.points : null;
+  const roundPoints = you.points != null && you.answered ? you.points : null;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm">
@@ -249,6 +249,8 @@ export function LiveQuizPage() {
   const { id } = useParams();
   const [name, setName] = useState("");
   const [justLocked, setJustLocked] = useState(false);
+  const [showBoard, setShowBoard] = useState(false);
+  const [resultHold, setResultHold] = useState(false);
   const {
     snapshot,
     questionBank,
@@ -267,9 +269,17 @@ export function LiveQuizPage() {
     [snapshot, questionBank],
   );
   const selected = pendingIndex ?? snapshot?.you?.selectedIndex ?? null;
-  const canAnswer = snapshot?.status === "QUESTION" && selected == null && joined;
+  const lockedIn = Boolean(pendingIndex != null || snapshot?.you?.answered);
+  const canAnswer = snapshot?.status === "QUESTION" && !lockedIn && joined;
+  const onPersonalResult = resultHold && Boolean(question);
+  const onLeaderboard =
+    snapshot?.status === "FINISHED"
+      ? false
+      : snapshot.you?.answered
+        ? showBoard && !resultHold
+        : snapshot?.status === "REVEAL";
   const { expired: questionExpired } = usePhaseClock(
-    snapshot?.status === "QUESTION" ? snapshot.endsAt : null,
+    snapshot?.status === "QUESTION" && !lockedIn ? snapshot.endsAt : null,
     snapshot?.durationMs ?? null,
   );
   const path = id ? `/live/${id}` : "/live";
@@ -280,6 +290,23 @@ export function LiveQuizPage() {
   const answeredCount =
     snapshot?.answeredCount ?? snapshot?.ranking.filter((row) => row.answered).length ?? 0;
   const playerCount = snapshot?.playerCount ?? snapshot?.players.length ?? 0;
+
+  useEffect(() => {
+    setShowBoard(false);
+    setResultHold(false);
+  }, [snapshot?.questionIndex]);
+
+  useEffect(() => {
+    if (!snapshot?.you?.answered) return;
+    if (snapshot.status !== "QUESTION" && snapshot.status !== "REVEAL") return;
+    setResultHold(true);
+    setShowBoard(false);
+    const timer = window.setTimeout(() => {
+      setResultHold(false);
+      setShowBoard(true);
+    }, 2_000);
+    return () => window.clearTimeout(timer);
+  }, [snapshot?.you?.answered, snapshot?.questionIndex]);
 
   useEffect(() => {
     if (pendingIndex == null) return;
@@ -304,8 +331,10 @@ export function LiveQuizPage() {
   const subtitle =
     snapshot.status === "LOBBY"
       ? "Gather your crew. Share the link, then hit start."
-      : snapshot.status === "QUESTION"
-        ? "Faster correct answers score more. Lock in before time runs out!"
+      : snapshot.status === "QUESTION" || resultHold
+        ? lockedIn
+          ? "Answer locked — here’s how you did."
+          : "Faster correct answers score more. Lock in before time runs out!"
         : snapshot.status === "REVEAL"
           ? "Round over — check the standings."
           : "Game over. Crown the champion.";
@@ -405,7 +434,7 @@ export function LiveQuizPage() {
           </section>
         ) : null}
 
-        {joined && question && snapshot.status === "QUESTION" ? (
+        {joined && question && !onLeaderboard && (snapshot.status === "QUESTION" || onPersonalResult) ? (
           <section
             key={`q-${snapshot.questionIndex}`}
             className="live-enter card space-y-5 rounded-2xl border border-line bg-surface p-5 sm:p-7"
@@ -414,13 +443,19 @@ export function LiveQuizPage() {
               <p className="rounded-lg bg-forest/10 px-2.5 py-1 text-xs font-bold tracking-wide text-forest uppercase">
                 Round {questionNumber} / {questionTotal}
               </p>
-              {playerCount > 0 ? <AnswerMeter answered={answeredCount} total={playerCount} /> : null}
+              {playerCount > 0 && !onPersonalResult ? (
+                <AnswerMeter answered={answeredCount} total={playerCount} />
+              ) : null}
             </div>
-            <PhaseTimer endsAt={snapshot.endsAt} durationMs={snapshot.durationMs} />
+            {onPersonalResult ? null : lockedIn ? null : (
+              <PhaseTimer endsAt={snapshot.endsAt} durationMs={snapshot.durationMs} />
+            )}
             <h2 className="font-serif text-2xl leading-snug sm:text-3xl">{question.prompt}</h2>
             <div className="space-y-3">
               {question.options.map((option, index) => {
                 const picked = selected === index;
+                const isCorrect = onPersonalResult && question.correctIndex === index;
+                const isWrongPick = onPersonalResult && picked && !isCorrect;
                 return (
                   <button
                     key={`${question.id}-${index}`}
@@ -428,15 +463,25 @@ export function LiveQuizPage() {
                     disabled={!canAnswer}
                     onClick={() => void onAnswer(index)}
                     className={`live-option flex w-full items-start gap-3 rounded-2xl border px-3 py-3.5 text-left ${
-                      picked
-                        ? `border-forest bg-forest/10 shadow-sm ${justLocked ? "live-option-picked" : ""}`
-                        : "border-line hover:border-forest/50 hover:bg-parchment/50"
+                      isCorrect
+                        ? "border-forest bg-forest/10"
+                        : isWrongPick
+                          ? "border-danger bg-danger/10"
+                          : picked
+                            ? `border-forest bg-forest/10 shadow-sm ${justLocked ? "live-option-picked" : ""}`
+                            : "border-line hover:border-forest/50 hover:bg-parchment/50"
                     } ${canAnswer ? "cursor-pointer" : "cursor-default opacity-90"}`}
                     style={{ animationDelay: `${index * 40}ms` }}
                   >
                     <span
                       className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sm font-bold ring-1 ${
-                        picked ? "bg-forest text-white ring-forest" : "bg-parchment text-ink ring-line"
+                        isCorrect
+                          ? "bg-forest text-white ring-forest"
+                          : isWrongPick
+                            ? "bg-danger text-white ring-danger"
+                            : picked
+                              ? "bg-forest text-white ring-forest"
+                              : "bg-parchment text-ink ring-line"
                       }`}
                     >
                       {LETTERS[index]}
@@ -446,7 +491,9 @@ export function LiveQuizPage() {
                 );
               })}
             </div>
-            {selected != null ? (
+            {onPersonalResult ? (
+              <RoundVerdict snapshot={snapshot} question={question} />
+            ) : selected != null ? (
               <p
                 className={`rounded-xl px-3 py-2 text-sm font-semibold ${
                   questionExpired ? "bg-gold/10 text-gold" : "bg-forest/10 text-forest"
@@ -454,7 +501,9 @@ export function LiveQuizPage() {
               >
                 {questionExpired
                   ? "Time’s up — tallying the scores…"
-                  : "Answer locked! Hang tight for the leaderboard."}
+                  : snapshot.you?.answered
+                    ? "Answer locked."
+                    : "Answer locked — checking…"}
               </p>
             ) : (
               <p className="text-sm text-muted">Tap an answer to lock it in. Speed counts.</p>
@@ -462,7 +511,7 @@ export function LiveQuizPage() {
           </section>
         ) : null}
 
-        {snapshot.status === "REVEAL" ? (
+        {onLeaderboard ? (
           <section
             key={`r-${snapshot.questionIndex}`}
             className="live-enter card space-y-5 rounded-2xl border border-line bg-surface p-5 sm:p-7"
@@ -476,17 +525,29 @@ export function LiveQuizPage() {
                 {answeredCount} of {playerCount} answered this round
               </p>
             </div>
-            {joined ? <RoundVerdict snapshot={snapshot} question={question} /> : null}
+            {joined ? (
+              <p className="text-sm font-semibold">
+                {snapshot.you?.answered
+                  ? snapshot.you.correct
+                    ? `You got it right${snapshot.you.points ? ` · +${snapshot.you.points}` : ""}.`
+                    : "You got this one wrong."
+                  : snapshot.status === "REVEAL"
+                    ? "You didn’t answer this round."
+                    : null}
+              </p>
+            ) : null}
             <Scoreboard rows={snapshot.ranking} youId={snapshot.you?.id} />
             {snapshot.isHost ? (
               <button
                 type="button"
                 className="inline-flex w-full items-center justify-center rounded-md bg-forest px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
-                disabled={busy}
+                disabled={busy || snapshot.status !== "REVEAL"}
                 onClick={() => void skipReveal()}
               >
                 {busy ? (
                   <Spinner size="sm" />
+                ) : snapshot.status !== "REVEAL" ? (
+                  "Waiting for everyone…"
                 ) : snapshot.hasMore ? (
                   "Next round →"
                 ) : (
@@ -494,9 +555,12 @@ export function LiveQuizPage() {
                 )}
               </button>
             ) : (
-              <p className="text-center text-sm font-medium text-muted sm:text-left">
-                Waiting for the host to start the next round…
-              </p>
+              <div className="rounded-2xl border-2 border-gold bg-gold/15 px-4 py-5 text-center">
+                <p className="font-serif text-2xl text-ink">Waiting for the host</p>
+                <p className="mt-1 text-base font-semibold text-muted">
+                  They’ll start the next round when everyone’s ready.
+                </p>
+              </div>
             )}
           </section>
         ) : null}

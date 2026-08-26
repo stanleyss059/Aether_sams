@@ -1,8 +1,9 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type QuizListItem } from "./api";
 import { GenerateQuizModal } from "./GenerateQuizModal";
 import { openGeneratedQuiz } from "./live";
+import { bumpLibrary, useCachedGet } from "./page-cache";
 import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
@@ -14,19 +15,13 @@ function whenLabel(iso: string) {
 
 export function QuizzesPage() {
   const navigate = useNavigate();
+  const query = useCachedGet<QuizListItem[]>("/api/quizzes");
+  const quizzes = query.data ?? [];
+  const loading = query.loading;
   const [topic, setTopic] = useState("");
-  const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    api<QuizListItem[]>("/api/quizzes")
-      .then(setQuizzes)
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
 
   function openPicker(event: FormEvent) {
     event.preventDefault();
@@ -50,6 +45,7 @@ export function QuizzesPage() {
         body: JSON.stringify({ topic: next, count }),
       });
       setPickerOpen(false);
+      bumpLibrary();
       await openGeneratedQuiz(navigate, data.quizId, live);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate that quiz.");
@@ -91,7 +87,9 @@ export function QuizzesPage() {
         </div>
       </form>
 
-      {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
+      {error || query.error ? (
+        <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error || query.error}</p>
+      ) : null}
 
       {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
 

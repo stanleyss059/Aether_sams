@@ -111,6 +111,19 @@ export function livePlayerToken(req: Request) {
   return header || "";
 }
 
+/** Prefer the in-memory player list when the session is already loaded. */
+export function playerFromSession(session: SessionBundle, req: Request) {
+  const token = livePlayerToken(req);
+  if (token) {
+    const byToken = session.players.find((player) => player.token === token);
+    if (byToken) return byToken;
+  }
+  if (req.user) {
+    return session.players.find((player) => player.userId === req.user!.id) ?? null;
+  }
+  return null;
+}
+
 export function parseOptions(raw: string) {
   return JSON.parse(raw) as string[];
 }
@@ -145,19 +158,20 @@ function shouldReveal(session: SessionBundle) {
   return questionTimedOut(session) || everyoneAnswered(session);
 }
 
+async function markReveal(id: string) {
+  const moved = await liveDb().liveSession.updateMany({
+    where: { id, status: "QUESTION" },
+    data: { status: "REVEAL", questionStartedAt: new Date() },
+  });
+  return moved.count > 0;
+}
+
 /** Advance QUESTION → REVEAL when time is up or everyone answered. Host advances from REVEAL. */
 export async function syncLiveStatus(id: string) {
   let session = await loadLiveSession(id);
-
-  if (shouldReveal(session)) {
-    await liveDb().liveSession.updateMany({
-      where: { id, status: "QUESTION" },
-      data: { status: "REVEAL", questionStartedAt: new Date() },
-    });
-    session = await loadLiveSession(id);
-  }
-
-  return session;
+  if (!shouldReveal(session)) return session;
+  await markReveal(id);
+  return loadLiveSession(id);
 }
 
 export async function advanceLiveSession(id: string) {
@@ -192,6 +206,143 @@ export async function liveViewer(req: Request, sessionId: string) {
   return null;
 }
 
+export type LiveGrade = {
+  selectedIndex: number;
+  correct: boolean;
+  points: number;
+  score: number;
+  correctIndex: number;
+  explanation: string;
+  status: LiveStatus;
+  answeredCount: number;
+  playerCount: number;
+  questionId: string;
+};
+
+/** Grade one answer with minimal DB work — no full deck reload. */
+export async function gradeLiveAnswer(
+  req: Request,
+  sessionId: string,
+  selectedIndex: number,
+  questionId?: string,
+): Promise<LiveGrade> {
+  const token = livePlayerToken(req);
+  const [session, viewer] = await Promise.all([
+    prisma.liveSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        status: true,
+        questionIndex: true,
+        questionStartedAt: true,
+        quizId: true,
+        _count: { select: { players: true } },
+      },
+    }),
+    token
+      ? prisma.livePlayer.findFirst({
+          where: { sessionId, token },
+          select: { id: true, score: true },
+        })
+      : req.user
+        ? prisma.livePlayer.findFirst({
+            where: { sessionId, userId: req.user.id },
+            select: { id: true, score: true },
+          })
+        : Promise.resolve(null),
+  ]);
+  if (!session) throw Errors.notFound("Live quiz not found.");
+  if (!viewer) throw Errors.forbidden("Join this live quiz first.");
+  if (session.status !== "QUESTION" || !session.questionStartedAt) {
+    throw Errors.validation("Wait for the host to open the next question.");
+  }
+
+  const elapsedMs = Date.now() - session.questionStartedAt.getTime();
+  if (elapsedMs > QUESTION_MS) throw Errors.validation("Time is up.");
+
+  const question = questionId
+    ? await prisma.question.findFirst({
+        where: { id: questionId, quizId: session.quizId },
+        select: { id: true, correctIndex: true, explanation: true },
+      })
+    : (
+        await prisma.question.findMany({
+          where: { quizId: session.quizId },
+          orderBy: { sortOrder: "asc" },
+          skip: session.questionIndex,
+          take: 1,
+          select: { id: true, correctIndex: true, explanation: true },
+        })
+      )[0];
+  if (!question) throw Errors.notFound("Question not found.");
+
+  const correct = selectedIndex === question.correctIndex;
+  const points = speedPoints(correct, elapsedMs);
+  try {
+    await prisma.liveAnswer.create({
+      data: {
+        sessionId: session.id,
+        playerId: viewer.id,
+        questionId: question.id,
+        selectedIndex,
+        correct,
+        points,
+        elapsedMs,
+      },
+    });
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: unknown }).code === "P2002"
+    ) {
+      throw Errors.conflict("You already answered this question.");
+    }
+    throw error;
+  }
+
+  const score = viewer.score + points;
+  const answeredCount = await prisma.liveAnswer.count({
+    where: { sessionId: session.id, questionId: question.id },
+  });
+  const playerCount = session._count.players;
+  let status: LiveStatus = session.status;
+
+  const writes: Promise<unknown>[] = [];
+  if (points > 0) {
+    writes.push(
+      prisma.livePlayer.update({
+        where: { id: viewer.id },
+        data: { score: { increment: points } },
+      }),
+    );
+  }
+  if (answeredCount >= playerCount && playerCount > 0) {
+    status = "REVEAL";
+    writes.push(
+      prisma.liveSession.updateMany({
+        where: { id: session.id, status: "QUESTION" },
+        data: { status: "REVEAL", questionStartedAt: new Date() },
+      }),
+    );
+  }
+  if (writes.length) await Promise.all(writes);
+
+  return {
+    selectedIndex,
+    correct,
+    points,
+    score,
+    correctIndex: question.correctIndex,
+    explanation: question.explanation,
+    status,
+    answeredCount,
+    playerCount,
+    questionId: question.id,
+  };
+}
+
 export function assertLiveHost(
   session: { hostUserId: string },
   viewer: { isHost: boolean } | null,
@@ -206,16 +357,21 @@ function phaseMs(status: LiveStatus) {
   return null;
 }
 
-export function serializeLive(session: SessionBundle, viewer: { id: string; token: string } | null) {
+export function serializeLive(
+  session: SessionBundle,
+  viewer: { id: string; token: string } | null,
+  options: { includeDeck?: boolean } = {},
+) {
+  const includeDeck = options.includeDeck !== false;
   const questions = session.quiz.questions;
   const question = questions[session.questionIndex] ?? null;
-  const showAnswer = session.status === "REVEAL" || session.status === "FINISHED";
-  const questionBank = questions.map((item) => ({
-    id: item.id,
-    prompt: item.prompt,
-    options: parseOptions(item.options),
-  }));
   const answers = roundAnswers(session);
+  const yourAnswer = viewer && question
+    ? answers.find((answer) => answer.playerId === viewer.id)
+    : null;
+  const youAnswered = Boolean(yourAnswer);
+  const showAnswer = session.status === "REVEAL" || session.status === "FINISHED" || youAnswered;
+  const showRoundResult = session.status === "REVEAL";
   const ranked = [...session.players]
     .sort((a, b) => b.score - a.score || a.createdAt.getTime() - b.createdAt.getTime())
     .map((player, index) => {
@@ -227,17 +383,12 @@ export function serializeLive(session: SessionBundle, viewer: { id: string; toke
         score: player.score,
         rank: index + 1,
         answered: Boolean(round),
-        correct: session.status === "REVEAL" ? (round?.correct ?? false) : null,
-        points: session.status === "REVEAL" ? (round?.points ?? 0) : null,
+        correct: showRoundResult ? (round?.correct ?? false) : null,
+        points: showRoundResult ? (round?.points ?? 0) : null,
       };
     });
 
-  const yourAnswer = viewer && question
-    ? answers.find((answer) => answer.playerId === viewer.id)
-    : null;
-
   const duration = phaseMs(session.status);
-  const showRoundResult = session.status === "REVEAL";
 
   return {
     id: session.id,
@@ -252,9 +403,9 @@ export function serializeLive(session: SessionBundle, viewer: { id: string; toke
           id: viewer.id,
           selectedIndex: yourAnswer?.selectedIndex ?? null,
           score: session.players.find((player) => player.id === viewer.id)?.score ?? 0,
-          answered: Boolean(yourAnswer),
-          correct: showRoundResult ? (yourAnswer?.correct ?? false) : null,
-          points: showRoundResult ? (yourAnswer?.points ?? 0) : null,
+          answered: youAnswered,
+          correct: youAnswered ? (yourAnswer?.correct ?? false) : null,
+          points: youAnswered ? (yourAnswer?.points ?? 0) : null,
         }
       : null,
     players: session.players.map((player) => ({
@@ -270,13 +421,19 @@ export function serializeLive(session: SessionBundle, viewer: { id: string; toke
     answeredCount: answers.length,
     playerCount: session.players.length,
     endsAt:
-      duration != null && session.questionStartedAt
+      duration != null && session.questionStartedAt && session.status === "QUESTION" && !youAnswered
         ? new Date(session.questionStartedAt.getTime() + duration).toISOString()
         : null,
-    durationMs: duration,
+    durationMs: youAnswered && session.status === "QUESTION" ? null : duration,
     questionIndex: session.questionIndex,
     questionCount: questions.length,
-    questions: questionBank,
+    questions: includeDeck
+      ? questions.map((item) => ({
+          id: item.id,
+          prompt: item.prompt,
+          options: parseOptions(item.options),
+        }))
+      : [],
     hasMore: session.questionIndex < questions.length - 1,
     question: question
       ? {

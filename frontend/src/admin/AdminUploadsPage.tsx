@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type AdminDocument, type Paginated } from "../api";
+import { bumpAdmin, bumpLibrary, peekCache, readCached } from "../page-cache";
 import { ConfirmModal } from "../ConfirmModal";
 import { FileBadge, SaveDocumentButton } from "../FileBadge";
 import {
@@ -26,16 +27,24 @@ export function AdminUploadsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pending, setPending] = useState<AdminDocument | null>(null);
 
-  async function load(nextPage = page, nextSearch = search) {
-    setLoading(true);
+  async function load(nextPage = page, nextSearch = search, force = false) {
+    const params = new URLSearchParams({
+      page: String(nextPage),
+      pageSize: "20",
+      q: nextSearch,
+    });
+    const path = `/api/admin/documents?${params}`;
+    const hit = peekCache<Paginated<AdminDocument>>(path);
+    if (hit && !force) {
+      setData(hit);
+      setLoading(false);
+      setError("");
+      return;
+    }
+    if (!hit) setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({
-        page: String(nextPage),
-        pageSize: "20",
-        q: nextSearch,
-      });
-      setData(await api<Paginated<AdminDocument>>(`/api/admin/documents?${params}`));
+      setData(await readCached<Paginated<AdminDocument>>(path, force));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load uploads.");
     } finally {
@@ -54,7 +63,9 @@ export function AdminUploadsPage() {
     try {
       await api(`/api/admin/documents/${pending.id}`, { method: "DELETE" });
       setPending(null);
-      await load();
+      bumpAdmin();
+      bumpLibrary();
+      await load(page, search, true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not delete that upload.");
     } finally {

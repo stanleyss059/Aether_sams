@@ -1,19 +1,10 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type AdminDashboard, type AuditLogEntry } from "../api";
+import { type AdminDashboard, type AuditLogEntry } from "../api";
+import { useCachedGet } from "../page-cache";
 import { LoadingState } from "../Spinner";
 
 export function AdminDashboardPage() {
-  const [data, setData] = useState<AdminDashboard | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api<AdminDashboard>("/api/admin/dashboard")
-      .then(setData)
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, error, loading } = useCachedGet<AdminDashboard>("/api/admin/dashboard");
 
   if (loading) return <LoadingState />;
   if (error) return <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>;

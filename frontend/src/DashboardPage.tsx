@@ -1,33 +1,21 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ACCENTS, accentOf } from "./accents";
 import { useAuth } from "./AuthContext";
-import { api, type DocListItem, type LibraryData, type QuizListItem } from "./api";
+import { type DocListItem, type LibraryData, type QuizListItem } from "./api";
 import { FileBadge } from "./FileBadge";
+import { useCachedGet } from "./page-cache";
 import { LoadingState } from "./Spinner";
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const [library, setLibrary] = useState<LibraryData | null>(null);
-  const [docs, setDocs] = useState<DocListItem[]>([]);
-  const [quizCount, setQuizCount] = useState(0);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      api<LibraryData>("/api/spaces"),
-      api<DocListItem[]>("/api/documents"),
-      api<QuizListItem[]>("/api/quizzes"),
-    ])
-      .then(([spaces, documents, quizzes]) => {
-        setLibrary(spaces);
-        setDocs(documents);
-        setQuizCount(quizzes.length);
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const spacesQuery = useCachedGet<LibraryData>("/api/spaces");
+  const docsQuery = useCachedGet<DocListItem[]>("/api/documents");
+  const quizzesQuery = useCachedGet<QuizListItem[]>("/api/quizzes");
+  const library = spacesQuery.data ?? null;
+  const docs = docsQuery.data ?? [];
+  const quizCount = quizzesQuery.data?.length ?? 0;
+  const error = spacesQuery.error || docsQuery.error || quizzesQuery.error;
+  const loading = spacesQuery.loading || docsQuery.loading || quizzesQuery.loading;
 
   const spaceCount = library?.spaces.length ?? 0;
   const uploadCount = docs.length;

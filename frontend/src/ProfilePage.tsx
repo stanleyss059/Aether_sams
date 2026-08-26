@@ -1,8 +1,9 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type DocListItem, type LibraryData, type QuizListItem, type User } from "./api";
 import { useAuth } from "./AuthContext";
 import { IconLock, IconMail, IconProfile, IconSignOut } from "./nav-icons";
+import { useCachedGet } from "./page-cache";
 import { Spinner } from "./Spinner";
 import { supabase } from "./supabase";
 
@@ -31,27 +32,12 @@ export function ProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"name" | "password" | "logout" | null>(null);
-  const [spaceCount, setSpaceCount] = useState<number | null>(null);
-  const [uploadCount, setUploadCount] = useState<number | null>(null);
-  const [quizCount, setQuizCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    Promise.all([
-      api<LibraryData>("/api/spaces"),
-      api<DocListItem[]>("/api/documents"),
-      api<QuizListItem[]>("/api/quizzes"),
-    ])
-      .then(([library, documents, quizzes]) => {
-        setSpaceCount(library.spaces.length);
-        setUploadCount(documents.length);
-        setQuizCount(quizzes.length);
-      })
-      .catch(() => {
-        setSpaceCount(0);
-        setUploadCount(0);
-        setQuizCount(0);
-      });
-  }, []);
+  const spacesQuery = useCachedGet<LibraryData>("/api/spaces");
+  const docsQuery = useCachedGet<DocListItem[]>("/api/documents");
+  const quizzesQuery = useCachedGet<QuizListItem[]>("/api/quizzes");
+  const spaceCount = spacesQuery.data?.spaces.length ?? null;
+  const uploadCount = docsQuery.data?.length ?? null;
+  const quizCount = quizzesQuery.data?.length ?? null;
 
   async function saveProfile(e: FormEvent) {
     e.preventDefault();

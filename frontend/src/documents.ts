@@ -1,4 +1,5 @@
 import { ApiError, accessAuthHeaders } from "./api";
+import { bumpLibrary } from "./page-cache";
 
 export type DocumentSummary = {
   id: string;
@@ -124,7 +125,7 @@ export async function uploadDocument(input: UploadInput): Promise<DocumentSummar
     throw new ApiError(detail || "Could not upload the file to Storage.", "STORAGE", put.status || 400);
   }
 
-  return withRetry(() =>
+  const created = await withRetry(() =>
     jsonPost<DocumentSummary>("/api/documents/complete", {
       documentId: prepared.documentId,
       spaceId: prepared.spaceId,
@@ -135,4 +136,6 @@ export async function uploadDocument(input: UploadInput): Promise<DocumentSummar
       fileUrl: prepared.fileUrl,
     }),
   );
+  bumpLibrary();
+  return created;
 }

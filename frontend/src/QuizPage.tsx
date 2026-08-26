@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { createLiveSession } from "./live";
+import { bumpLibrary, peekCache, readCached } from "./page-cache";
 import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
@@ -105,7 +106,9 @@ type Filter = "all" | "missed" | "correct";
 export function QuizPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [quiz, setQuiz] = useState<Quiz | null>(() =>
+    id ? (peekCache<Quiz>(`/api/quizzes/${id}`) ?? null) : null,
+  );
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [index, setIndex] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
@@ -125,7 +128,7 @@ export function QuizPage() {
 
   useEffect(() => {
     if (!id) return;
-    api<Quiz>(`/api/quizzes/${id}`)
+    readCached<Quiz>(`/api/quizzes/${id}`)
       .then((data) => {
         const draft = readDraft(id);
         const ids = new Set(data.questions.map((q) => q.id));
@@ -208,6 +211,7 @@ export function QuizPage() {
       });
       setResult(data);
       setConfirmSubmit(false);
+      bumpLibrary();
       if (id) clearDraft(id);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {

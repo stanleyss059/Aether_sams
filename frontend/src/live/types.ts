@@ -68,11 +68,12 @@ export function resolveLiveQuestion(
   };
 }
 
-export function pollIntervalMs(status: LiveStatus | undefined) {
+export function pollIntervalMs(status: LiveStatus | undefined, answered = false) {
   if (!status || status === "FINISHED") return null;
   if (status === "LOBBY") return 2_000;
-  if (status === "REVEAL") return 1_000;
-  return 400;
+  if (status === "REVEAL") return 500;
+  if (answered) return 250;
+  return 350;
 }
 
 const STATUS_RANK: Record<LiveStatus, number> = {

@@ -3,14 +3,14 @@ import { Errors } from "./errors.js";
 import { z } from "zod";
 
 const generatedSchema = z.object({
-  summary: z.string().trim().min(1).max(4_000),
+  summary: z.string().trim().min(1).max(400),
   questions: z
     .array(
       z.object({
         question: z.string().trim().min(1).max(1_000),
         options: z.array(z.string().trim().min(1).max(500)).length(4),
         correctIndex: z.number().int().min(0).max(3),
-        explanation: z.string().trim().min(1).max(2_000),
+        explanation: z.string().trim().min(1).max(400),
       }),
     )
     .min(3),
@@ -18,7 +18,7 @@ const generatedSchema = z.object({
 type Generated = z.infer<typeof generatedSchema>;
 
 const notesSchema = z.object({
-  notes: z.string().trim().min(80).max(20_000),
+  notes: z.string().trim().min(40).max(8_000),
 });
 
 async function chatJson(
@@ -88,20 +88,20 @@ async function chatJson(
   }
 }
 
-/** Keep completion budget tight so low OpenRouter balances still succeed. */
+/** Keep completion budget tight so quizzes finish quickly. */
 function quizMaxTokens(count: number) {
-  return Math.min(8_000, Math.max(1_200, count * 220 + 400));
+  return Math.min(4_500, Math.max(900, count * 150 + 250));
 }
 
-export async function generateQuizFromText(title: string, text: string, count = 50): Promise<Generated> {
-  const material = text.slice(0, 14000);
+export async function generateQuizFromText(title: string, text: string, count = 12): Promise<Generated> {
+  const material = text.slice(0, 6_000);
   const parsed = generatedSchema.safeParse(
     await chatJson(
       [
         {
           role: "system",
           content:
-            "You are a university tutor. Create multiple-choice questions using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
+            "You are a university tutor. Create multiple-choice questions using ONLY the provided material. Keep stems and explanations short. Return JSON only.",
         },
         {
           role: "user",
@@ -112,18 +112,18 @@ ${material}
 
 Return JSON with this shape:
 {
-  "summary": "one short paragraph (80-120 words) of the main ideas",
+  "summary": "one sentence of the main idea",
   "questions": [
     {
       "question": "clear stem",
       "options": ["A", "B", "C", "D"],
       "correctIndex": 0,
-      "explanation": "one or two sentences from the material"
+      "explanation": "one short sentence from the material"
     }
   ]
 }
 
-Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3.`,
+Create exactly ${count} questions. Each must have 4 short options. correctIndex is 0-3. Be concise.`,
         },
       ],
       quizMaxTokens(count),
@@ -133,14 +133,14 @@ Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3
   return parsed.data satisfies Generated;
 }
 
-export async function generateQuizFromTopic(topic: string, count = 25): Promise<Generated> {
+export async function generateQuizFromTopic(topic: string, count = 12): Promise<Generated> {
   const parsed = generatedSchema.safeParse(
     await chatJson(
       [
         {
           role: "system",
           content:
-            "You are a university tutor. Create accurate multiple-choice questions about the given topic using widely accepted academic knowledge. Wrong options must be plausible. Return JSON only.",
+            "You are a university tutor. Create concise, accurate multiple-choice questions. Wrong options must be plausible. Return JSON only.",
         },
         {
           role: "user",
@@ -148,18 +148,18 @@ export async function generateQuizFromTopic(topic: string, count = 25): Promise<
 
 Return JSON with this shape:
 {
-  "summary": "one short paragraph (80-120 words) introducing the topic",
+  "summary": "one sentence introducing the topic",
   "questions": [
     {
       "question": "clear stem",
       "options": ["A", "B", "C", "D"],
       "correctIndex": 0,
-      "explanation": "one or two sentences that teach the idea"
+      "explanation": "one short teaching sentence"
     }
   ]
 }
 
-Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3. Stay on this topic.`,
+Create exactly ${count} questions. Each must have 4 short options. correctIndex is 0-3. Stay on this topic. Be concise.`,
         },
       ],
       quizMaxTokens(count),
@@ -170,14 +170,14 @@ Create exactly ${count} questions. Each must have 4 options. correctIndex is 0-3
 }
 
 export async function generateNotesFromText(title: string, text: string): Promise<string> {
-  const material = text.slice(0, 24000);
+  const material = text.slice(0, 6_000);
   const parsed = notesSchema.safeParse(
     await chatJson(
       [
         {
           role: "system",
           content:
-            "You are a university tutor. Write detailed study notes using ONLY the provided material. Do not invent facts that are not in the text. Return JSON only.",
+            "You are a university tutor. Write concise study notes using ONLY the provided material. Do not invent facts. Return JSON only.",
         },
         {
           role: "user",
@@ -188,22 +188,21 @@ ${material}
 
 Return JSON with this shape:
 {
-  "notes": "long study notes as plain text"
+  "notes": "study notes as plain text"
 }
 
-Write comprehensive revision notes. Prefer 800-1500 words when the material supports it; if the source is shorter, cover everything it contains.
+Write tight revision notes (about 250-500 words). Cover the main ideas only.
 
 Use this structure with blank lines between sections:
 1. Overview
-2. Key terms and definitions
-3. Main ideas and explanations
-4. Processes, examples, or important details from the text
-5. Exam takeaways
+2. Key terms
+3. Main ideas
+4. Exam takeaways
 
-Use short headings in Title Case, then bullet points or short paragraphs. Do not use markdown symbols like # or *.`,
+Use short headings in Title Case, then bullet points. Do not use markdown symbols like # or *.`,
         },
       ],
-      6_000,
+      1_600,
     ),
   );
   if (!parsed.success) throw Errors.validation("The AI returned invalid notes. Try generating again.");

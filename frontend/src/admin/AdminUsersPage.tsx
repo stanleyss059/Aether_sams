@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type AdminUser, type Paginated } from "../api";
+import { bumpAdmin, peekCache, readCached } from "../page-cache";
 import { useAuth } from "../AuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import {
@@ -28,16 +29,24 @@ export function AdminUsersPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
 
-  async function load(nextPage = page, nextSearch = search) {
-    setLoading(true);
+  async function load(nextPage = page, nextSearch = search, force = false) {
+    const params = new URLSearchParams({
+      page: String(nextPage),
+      pageSize: "20",
+      q: nextSearch,
+    });
+    const path = `/api/admin/users?${params}`;
+    const hit = peekCache<Paginated<AdminUser>>(path);
+    if (hit && !force) {
+      setData(hit);
+      setLoading(false);
+      setError("");
+      return;
+    }
+    if (!hit) setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({
-        page: String(nextPage),
-        pageSize: "20",
-        q: nextSearch,
-      });
-      setData(await api<Paginated<AdminUser>>(`/api/admin/users?${params}`));
+      setData(await readCached<Paginated<AdminUser>>(path, force));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load users.");
     } finally {
@@ -54,7 +63,8 @@ export function AdminUsersPage() {
     setError("");
     try {
       await api(`/api/admin/users/${user.id}/suspend`, { method: "POST" });
-      await load();
+      bumpAdmin();
+      await load(page, search, true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not suspend that user.");
     } finally {
@@ -67,7 +77,8 @@ export function AdminUsersPage() {
     setError("");
     try {
       await api(`/api/admin/users/${user.id}/reactivate`, { method: "POST" });
-      await load();
+      bumpAdmin();
+      await load(page, search, true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not reactivate that user.");
     } finally {
@@ -82,7 +93,8 @@ export function AdminUsersPage() {
     try {
       await api(`/api/admin/users/${pendingDelete.id}`, { method: "DELETE" });
       setPendingDelete(null);
-      await load();
+      bumpAdmin();
+      await load(page, search, true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not delete that user.");
     } finally {

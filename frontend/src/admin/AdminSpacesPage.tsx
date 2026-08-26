@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ACCENTS, accentOf } from "../accents";
 import { api, ApiError, type AdminSpace, type Paginated } from "../api";
+import { bumpAdmin, bumpLibrary, peekCache, readCached } from "../page-cache";
 import { ConfirmModal } from "../ConfirmModal";
 import {
   Chip,
@@ -26,16 +27,24 @@ export function AdminSpacesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pending, setPending] = useState<AdminSpace | null>(null);
 
-  async function load(nextPage = page, nextSearch = search) {
-    setLoading(true);
+  async function load(nextPage = page, nextSearch = search, force = false) {
+    const params = new URLSearchParams({
+      page: String(nextPage),
+      pageSize: "20",
+      q: nextSearch,
+    });
+    const path = `/api/admin/spaces?${params}`;
+    const hit = peekCache<Paginated<AdminSpace>>(path);
+    if (hit && !force) {
+      setData(hit);
+      setLoading(false);
+      setError("");
+      return;
+    }
+    if (!hit) setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({
-        page: String(nextPage),
-        pageSize: "20",
-        q: nextSearch,
-      });
-      setData(await api<Paginated<AdminSpace>>(`/api/admin/spaces?${params}`));
+      setData(await readCached<Paginated<AdminSpace>>(path, force));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load spaces.");
     } finally {
@@ -54,7 +63,9 @@ export function AdminSpacesPage() {
     try {
       await api(`/api/admin/spaces/${pending.id}`, { method: "DELETE" });
       setPending(null);
-      await load();
+      bumpAdmin();
+      bumpLibrary();
+      await load(page, search, true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not delete that space.");
     } finally {

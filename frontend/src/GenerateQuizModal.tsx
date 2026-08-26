@@ -27,12 +27,12 @@ export function GenerateQuizModal({
   onCancel,
   onGenerate,
 }: GenerateQuizModalProps) {
-  const [count, setCount] = useState<number>(QUIZ_SIZE_OPTIONS[2].count);
+  const [count, setCount] = useState<number>(QUIZ_SIZE_OPTIONS[0].count);
   const [step, setStep] = useState<"size" | "mode">("size");
 
   useEffect(() => {
     if (open) {
-      setCount(QUIZ_SIZE_OPTIONS[2].count);
+      setCount(QUIZ_SIZE_OPTIONS[0].count);
       setStep("size");
     }
   }, [open]);

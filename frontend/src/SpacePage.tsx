@@ -7,6 +7,7 @@ import { ConfirmModal } from "./ConfirmModal";
 import { GenerateQuizModal } from "./GenerateQuizModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 import { openGeneratedQuiz } from "./live";
+import { bumpLibrary, peekCache, readCached, writeCache } from "./page-cache";
 import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 import { UploadProgressBar, type UploadProgress } from "./UploadProgressBar";
@@ -19,7 +20,9 @@ export function SpacePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [space, setSpace] = useState<SpaceDetail | null>(null);
+  const [space, setSpace] = useState<SpaceDetail | null>(() =>
+    id ? (peekCache<SpaceDetail>(`/api/spaces/${id}`) ?? null) : null,
+  );
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,9 +37,9 @@ export function SpacePage() {
   const [upload, setUpload] = useState<UploadProgress | null>(null);
   const [pending, setPending] = useState<PendingDelete | null>(null);
 
-  async function load() {
+  async function load(force = false) {
     if (!id) return null;
-    const next = await api<SpaceDetail>(`/api/spaces/${id}`);
+    const next = await readCached<SpaceDetail>(`/api/spaces/${id}`, force);
     setSpace(next);
     setTitle(next.title);
     setCourseCode(next.courseCode);
@@ -46,6 +49,8 @@ export function SpacePage() {
   }
 
   useEffect(() => {
+    const hit = id ? peekCache<SpaceDetail>(`/api/spaces/${id}`) ?? null : null;
+    setSpace(hit);
     load().catch((err: Error) => setError(err.message));
   }, [id]);
 
@@ -71,17 +76,18 @@ export function SpacePage() {
         method: "PATCH",
         body: JSON.stringify({ title, courseCode, description, accent }),
       });
-      setSpace((current) =>
-        current
-          ? {
-              ...current,
-              title: updated.title,
-              courseCode: updated.courseCode,
-              description: updated.description,
-              accent: updated.accent,
-            }
-          : current,
-      );
+      const next = space
+        ? {
+            ...space,
+            title: updated.title,
+            courseCode: updated.courseCode,
+            description: updated.description,
+            accent: updated.accent,
+          }
+        : null;
+      setSpace(next);
+      bumpLibrary();
+      if (id && next) writeCache(`/api/spaces/${id}`, next);
       setEditing(false);
       setMessage("Space updated.");
     } catch (err) {
@@ -113,7 +119,7 @@ export function SpacePage() {
       }
       if (uploaded.length) {
         setUpload({ completed: files.length, total: files.length, filename: "" });
-        await load();
+        await load(true);
         await new Promise((resolve) => setTimeout(resolve, 700));
       }
       if (uploaded.length > 1 && failures.length === 0) {
@@ -138,9 +144,15 @@ export function SpacePage() {
     setNotingId(watchId);
     try {
       for (let attempt = 0; attempt < 24; attempt += 1) {
-        const next = await load();
+        const next = await load(true);
         const ready = docIds.every((docId) => next?.documents.find((item) => item.id === docId)?.summary?.trim());
-        if (ready) return;
+        if (ready) {
+          if (id && next) {
+            bumpLibrary();
+            writeCache(`/api/spaces/${id}`, next);
+          }
+          return;
+        }
         await new Promise((resolve) => setTimeout(resolve, 2500));
       }
       setMessage(
@@ -168,16 +180,21 @@ export function SpacePage() {
       const data = await api<{ id: string; summary: string }>(`/api/documents/${docId}/notes`, {
         method: "POST",
       });
-      setSpace((current) =>
-        current
+      setSpace((current) => {
+        const next = current
           ? {
               ...current,
               documents: current.documents.map((doc) =>
                 doc.id === docId ? { ...doc, summary: data.summary } : doc,
               ),
             }
-          : current,
-      );
+          : current;
+        if (id && next) {
+          bumpLibrary();
+          writeCache(`/api/spaces/${id}`, next);
+        }
+        return next;
+      });
       if (openAfter) navigate(`/documents/${docId}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate notes from that upload.");
@@ -197,6 +214,7 @@ export function SpacePage() {
         body: JSON.stringify({ count }),
       });
       setQuizTarget(null);
+      bumpLibrary();
       await openGeneratedQuiz(navigate, data.quizId, live);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate a quiz from that upload.");
@@ -211,12 +229,14 @@ export function SpacePage() {
     try {
       if (pending.kind === "space") {
         await api(`/api/spaces/${id}`, { method: "DELETE" });
+        bumpLibrary();
         navigate("/spaces");
         return;
       }
       await api(`/api/documents/${pending.id}`, { method: "DELETE" });
+      bumpLibrary();
       setPending(null);
-      await load();
+      await load(true);
     } catch (err) {
       setError(
         err instanceof ApiError

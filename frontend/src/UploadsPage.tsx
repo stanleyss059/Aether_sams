@@ -1,17 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, type DocListItem } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { GenerateQuizModal } from "./GenerateQuizModal";
 import { FileBadge, SaveDocumentButton, ViewNoteButton } from "./FileBadge";
 import { openGeneratedQuiz } from "./live";
+import { useCachedGet, bumpLibrary } from "./page-cache";
 import { ShareButton } from "./ShareButton";
 import { LoadingState, Spinner } from "./Spinner";
 
 export function UploadsPage() {
-  const [docs, setDocs] = useState<DocListItem[]>([]);
+  const query = useCachedGet<DocListItem[]>("/api/documents");
+  const docs = query.data ?? [];
+  const loading = query.loading;
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notingId, setNotingId] = useState<string | null>(null);
   const [pending, setPending] = useState<DocListItem | null>(null);
@@ -19,23 +21,14 @@ export function UploadsPage() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    api<DocListItem[]>("/api/documents")
-      .then(setDocs)
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
-
   async function generateNotes(docId: string, openAfter = false) {
     setNotingId(docId);
     setError("");
     try {
-      const data = await api<{ id: string; summary: string }>(`/api/documents/${docId}/notes`, {
+      await api<{ id: string; summary: string }>(`/api/documents/${docId}/notes`, {
         method: "POST",
       });
-      setDocs((current) =>
-        current.map((doc) => (doc.id === docId ? { ...doc, summary: data.summary } : doc)),
-      );
+      bumpLibrary();
       if (openAfter) navigate(`/documents/${docId}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate notes from that upload.");
@@ -55,6 +48,7 @@ export function UploadsPage() {
         body: JSON.stringify({ count }),
       });
       setQuizTarget(null);
+      bumpLibrary();
       await openGeneratedQuiz(navigate, data.quizId, live);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate a quiz from that upload.");
@@ -69,7 +63,7 @@ export function UploadsPage() {
     setError("");
     try {
       await api(`/api/documents/${doc.id}`, { method: "DELETE" });
-      setDocs((current) => current.filter((item) => item.id !== doc.id));
+      bumpLibrary();
       setPending(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not delete that upload.");
@@ -85,7 +79,9 @@ export function UploadsPage() {
         <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">My uploads</h1>
         <p className="mt-1 text-muted">Every file you have uploaded, across all course spaces.</p>
       </div>
-      {error ? <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p> : null}
+      {error || query.error ? (
+        <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error || query.error}</p>
+      ) : null}
       {loading ? <LoadingState className="flex items-center justify-center py-12" /> : null}
       {!loading && docs.length === 0 ? (
         <p className="card-empty px-4 py-12 text-center text-muted">

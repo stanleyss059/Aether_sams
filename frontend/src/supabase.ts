@@ -11,18 +11,18 @@ if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) {
   throw new Error("VITE_SUPABASE_URL must look like https://<project-ref>.supabase.co");
 }
 
-function tabSessionStorage(): SupportedStorage | undefined {
+function persistentAuthStorage(): SupportedStorage | undefined {
   try {
     const probe = "__aether_session_probe__";
-    sessionStorage.setItem(probe, "1");
-    sessionStorage.removeItem(probe);
+    localStorage.setItem(probe, "1");
+    localStorage.removeItem(probe);
     return {
-      getItem: (key) => sessionStorage.getItem(key),
+      getItem: (key) => localStorage.getItem(key),
       setItem: (key, value) => {
-        sessionStorage.setItem(key, value);
+        localStorage.setItem(key, value);
       },
       removeItem: (key) => {
-        sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
       },
     };
   } catch {
@@ -30,7 +30,7 @@ function tabSessionStorage(): SupportedStorage | undefined {
   }
 }
 
-const storage = tabSessionStorage();
+const storage = persistentAuthStorage();
 
 export const supabase = createClient(url, anonKey, {
   auth: {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, type AuditLogEntry, type Paginated } from "../api";
+import { type AuditLogEntry, type Paginated } from "../api";
+import { peekCache, readCached } from "../page-cache";
 import { EmptyState, ErrorNote, FilterBar, FilterInput, LoadingRows, Pager, ResultCount } from "./AdminUI";
 
 const CATEGORIES: Record<string, { label: string; stripe: string }> = {
@@ -70,8 +71,6 @@ export function AdminAuditLogsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    setError("");
     const params = new URLSearchParams({
       page: String(page),
       pageSize: "25",
@@ -79,7 +78,17 @@ export function AdminAuditLogsPage() {
       action: search.action,
       entityType: search.entityType,
     });
-    api<Paginated<AuditLogEntry>>(`/api/admin/audit-logs?${params}`)
+    const path = `/api/admin/audit-logs?${params}`;
+    const hit = peekCache<Paginated<AuditLogEntry>>(path);
+    if (hit) {
+      setData(hit);
+      setLoading(false);
+      setError("");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    readCached<Paginated<AuditLogEntry>>(path)
       .then(setData)
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));

@@ -13,6 +13,7 @@ import { DashboardPage } from "./DashboardPage";
 import { ForgotPasswordPage } from "./ForgotPasswordPage";
 import { NavBar } from "./NavBar";
 import { OnboardingGuide } from "./OnboardingGuide";
+import { bumpLibrary, peekCache, readCached, writeCache } from "./page-cache";
 import { isPasswordRecovery } from "./password-recovery";
 import { ProfilePage } from "./ProfilePage";
 import { QuizPage } from "./QuizPage";
@@ -254,7 +255,9 @@ function RegisterPage() {
 function DocumentPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [doc, setDoc] = useState<DocDetail | null>(null);
+  const [doc, setDoc] = useState<DocDetail | null>(() =>
+    id ? (peekCache<DocDetail>(`/api/documents/${id}`) ?? null) : null,
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [notesBusy, setNotesBusy] = useState(false);
@@ -262,13 +265,14 @@ function DocumentPage() {
   const [quizModalOpen, setQuizModalOpen] = useState(false);
   const notesRequested = useRef("");
 
-  async function load() {
+  async function load(force = false) {
     if (!id) return;
-    setDoc(await api<DocDetail>(`/api/documents/${id}`));
+    setDoc(await readCached<DocDetail>(`/api/documents/${id}`, force));
   }
 
   useEffect(() => {
     notesRequested.current = "";
+    setDoc(id ? peekCache<DocDetail>(`/api/documents/${id}`) ?? null : null);
     load().catch((err: Error) => setError(err.message));
   }, [id]);
 
@@ -282,15 +286,26 @@ function DocumentPage() {
       try {
         for (let attempt = 0; attempt < 16; attempt += 1) {
           if (cancelled) return;
-          const latest = await api<DocDetail>(`/api/documents/${id}`);
+          const latest = await readCached<DocDetail>(`/api/documents/${id}`, true);
           if (latest.summary.trim()) {
             setDoc(latest);
+            bumpLibrary();
+            writeCache(`/api/documents/${id}`, latest);
             return;
           }
           await new Promise((resolve) => setTimeout(resolve, 2500));
         }
         const data = await api<{ summary: string }>(`/api/documents/${id}/notes`, { method: "POST" });
-        if (!cancelled) setDoc((current) => (current ? { ...current, summary: data.summary } : current));
+        if (!cancelled) {
+          setDoc((current) => {
+            const next = current ? { ...current, summary: data.summary } : current;
+            if (id && next) {
+              bumpLibrary();
+              writeCache(`/api/documents/${id}`, next);
+            }
+            return next;
+          });
+        }
       } catch (err) {
         notesRequested.current = "";
         if (!cancelled) setError(err instanceof ApiError ? err.message : "Could not generate notes.");
@@ -314,7 +329,8 @@ function DocumentPage() {
         body: JSON.stringify({ count }),
       });
       setQuizModalOpen(false);
-      await load();
+      bumpLibrary();
+      if (!live) await load(true);
       await openGeneratedQuiz(navigate, data.quizId, live);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not generate a quiz.");
@@ -329,6 +345,7 @@ function DocumentPage() {
     setError("");
     try {
       await api(`/api/documents/${id}`, { method: "DELETE" });
+      bumpLibrary();
       navigate(doc.space ? `/spaces/${doc.space.id}` : "/uploads");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not delete that upload.");
