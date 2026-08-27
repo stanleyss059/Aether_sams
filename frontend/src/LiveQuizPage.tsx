@@ -275,7 +275,7 @@ export function LiveQuizPage() {
   const onLeaderboard =
     snapshot?.status === "FINISHED"
       ? false
-      : snapshot.you?.answered
+      : snapshot?.you?.answered
         ? showBoard && !resultHold
         : snapshot?.status === "REVEAL";
   const { expired: questionExpired } = usePhaseClock(
