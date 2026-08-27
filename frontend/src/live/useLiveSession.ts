@@ -222,7 +222,7 @@ export function useLiveSession(sessionId: string | undefined) {
             score: grade.score,
           },
           ranking: current.ranking.map((row) =>
-            row.id === current.you.id
+            current.you && row.id === current.you.id
               ? {
                   ...row,
                   answered: true,
